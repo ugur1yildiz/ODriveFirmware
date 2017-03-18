@@ -877,8 +877,8 @@ void motor_thread(void const * argument) {
     motor->motor_thread = osThreadGetId();
     motor->thread_ready = true;
 
-    //Only run tests on M0 for now
-    if (motor == &motors[1]) {
+    //Only run tests on M1 for now
+    if (motor == &motors[0]) {
         FOC_voltage_loop(motor, 0.0f, 0.0f);
     }
 
@@ -915,6 +915,8 @@ void motor_thread(void const * argument) {
     // Position test
     motors[0].pos_setpoint = 50000.0f; // [counts/s]
     motors[0].control_mode = POSITION_CONTROL;
+    motors[1].pos_setpoint = 50000.0f; // [counts/s]
+    motors[1].control_mode = POSITION_CONTROL;
 
     control_motor_loop(motor);
 

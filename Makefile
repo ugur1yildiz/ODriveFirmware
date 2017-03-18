@@ -49,7 +49,6 @@ C_SOURCES = \
   Src/freertos.c \
   Src/spi.c \
   Src/stm32f4xx_hal_msp.c \
-  Src/can.c \
   Src/usbd_conf.c \
   Src/usbd_desc.c \
   Src/usb_device.c \
@@ -62,7 +61,6 @@ C_SOURCES = \
   Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc_ex.c \
   Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash.c \
   Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash_ex.c \
-  Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_can.c \
   Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc.c \
   Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma.c \
   Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cortex.c \
@@ -75,10 +73,16 @@ C_SOURCES = \
   Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pcd.c \
   Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pcd_ex.c \
   Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_usb.c \
+  Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2c.c \
+  Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2c_ex.c \
+  Src/i2c.c \
   Src/usbd_cdc_if.c \
   Src/syscalls.c \
   MotorControl/utils.c \
   MotorControl/low_level.c  
+
+
+
 ASM_SOURCES = \
   startup/startup_stm32f405xx.s
 
