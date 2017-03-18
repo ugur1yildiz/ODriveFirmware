@@ -49,6 +49,7 @@
 /* USER CODE BEGIN Includes */
 #include "freertos_vars.h"
 #include "low_level.h"
+#include "balance.h"
 #include "version.h"
 /* USER CODE END Includes */
 
@@ -126,9 +127,13 @@ void StartDefaultTask(void const * argument)
   thread_motor_1 = osThreadCreate(osThread(task_motor_1), &motors[1]);
 
   // Start USB command handling thread
-  osThreadDef(task_usb_cmd, usb_cmd_thread, osPriorityNormal, 0, 512);
-  thread_usb_cmd = osThreadCreate(osThread(task_usb_cmd), NULL);
+  // osThreadDef(task_usb_cmd, usb_cmd_thread, osPriorityNormal, 0, 512);
+  // thread_usb_cmd = osThreadCreate(osThread(task_usb_cmd), NULL);
 
+  // Start balancing thred
+  osThreadDef(task_balance, balance_main,   osPriorityNormal, 0, 512);
+  thread_balance = osThreadCreate(osThread(task_balance), &motors[0]);
+  
   //If we get to here, then the default task is done.
   vTaskDelete(defaultTaskHandle);
 
