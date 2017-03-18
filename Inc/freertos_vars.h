@@ -9,5 +9,6 @@ osSemaphoreId sem_usb_irq;
 osThreadId thread_motor_0;
 osThreadId thread_motor_1;
 osThreadId thread_usb_cmd;
+osThreadId thread_balance;
 
 #endif /* __FREERTOS_H */
