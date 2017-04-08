@@ -27,7 +27,9 @@
 /* Private typedef -----------------------------------------------------------*/
 /* Global constant data ------------------------------------------------------*/
 /* Global variables ----------------------------------------------------------*/
-float vbus_voltage = 12.0f; //Arbitrary non-zero inital value to avoid division by zero if ADC reading is late
+//This value is updated by the DC-bus reading ADC.
+//Arbitrary non-zero inital value to avoid division by zero if ADC reading is late
+float vbus_voltage = 12.0f; 
 
 //@TODO stick parameter into struct
 #define ENCODER_CPR (4096)
@@ -165,8 +167,8 @@ static float brake_resistance = 2.0f; // [ohm]
 
 /* Monitoring */
 monitoring_slot monitoring_slots[] = {
-		{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},
-		{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0}
+        { 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},
+        { 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0}
 };
 
 /* variables exposed to usb interface via set/get/monitor
@@ -175,74 +177,74 @@ monitoring_slot monitoring_slots[] = {
  * */
 
 float * exposed_floats [] = {
-		&vbus_voltage, // ro
-		&elec_rad_per_enc, // ro
-		&motors[0].pos_setpoint, // rw
-		&motors[0].pos_gain, // rw
-		&motors[0].vel_setpoint,// rw
-		&motors[0].vel_gain,// rw
-		&motors[0].vel_integrator_gain,// rw
-		&motors[0].vel_integrator_current,// rw
-		&motors[0].vel_limit,// rw
-		&motors[0].current_setpoint,// rw
-		&motors[0].selftest_current, // rw
-		&motors[0].phase_inductance,// ro
-		&motors[0].phase_resistance,// ro
-		&motors[0].current_meas.phB,// ro
-		&motors[0].current_meas.phC,// ro
-		&motors[0].DC_calib.phB,// rw
-		&motors[0].DC_calib.phC,// rw
-		&motors[0].shunt_conductance,// rw
-		&motors[0].current_control.current_lim,// rw
-		&motors[0].current_control.p_gain,// rw
-		&motors[0].current_control.i_gain,// rw
-		&motors[0].current_control.v_current_control_integral_d,// rw
-		&motors[0].current_control.v_current_control_integral_q,// rw
-		&motors[0].current_control.Ibus,// ro
-		&motors[0].rotor.phase ,// ro
-		&motors[0].rotor.pll_pos ,// rw
-		&motors[0].rotor.pll_vel ,// rw
-		&motors[0].rotor.pll_kp ,// rw
-		&motors[0].rotor.pll_ki ,// rw
-		&motors[1].pos_setpoint, // rw
-		&motors[1].pos_gain, // rw
-		&motors[1].vel_setpoint,// rw
-		&motors[1].vel_gain,// rw
-		&motors[1].vel_integrator_gain,// rw
-		&motors[1].vel_integrator_current,// rw
-		&motors[1].vel_limit,// rw
-		&motors[1].current_setpoint,// rw
-		&motors[1].selftest_current, // rw
-		&motors[1].phase_inductance,// ro
-		&motors[1].phase_resistance,// ro
-		&motors[1].current_meas.phB,// ro
-		&motors[1].current_meas.phC,// ro
-		&motors[1].DC_calib.phB,// rw
-		&motors[1].DC_calib.phC,// rw
-		&motors[1].shunt_conductance,// rw
-		&motors[1].current_control.current_lim,// rw
-		&motors[1].current_control.p_gain,// rw
-		&motors[1].current_control.i_gain,// rw
-		&motors[1].current_control.v_current_control_integral_d,// rw
-		&motors[1].current_control.v_current_control_integral_q,// rw
-		&motors[1].current_control.Ibus,// ro
-		&motors[1].rotor.phase ,// ro
-		&motors[1].rotor.pll_pos ,// rw
-		&motors[1].rotor.pll_vel ,// rw
-		&motors[1].rotor.pll_kp ,// rw
-		&motors[1].rotor.pll_ki ,// rw
+        &vbus_voltage, // ro
+        &elec_rad_per_enc, // ro
+        &motors[0].pos_setpoint, // rw
+        &motors[0].pos_gain, // rw
+        &motors[0].vel_setpoint,// rw
+        &motors[0].vel_gain,// rw
+        &motors[0].vel_integrator_gain,// rw
+        &motors[0].vel_integrator_current,// rw
+        &motors[0].vel_limit,// rw
+        &motors[0].current_setpoint,// rw
+        &motors[0].selftest_current, // rw
+        &motors[0].phase_inductance,// ro
+        &motors[0].phase_resistance,// ro
+        &motors[0].current_meas.phB,// ro
+        &motors[0].current_meas.phC,// ro
+        &motors[0].DC_calib.phB,// rw
+        &motors[0].DC_calib.phC,// rw
+        &motors[0].shunt_conductance,// rw
+        &motors[0].current_control.current_lim,// rw
+        &motors[0].current_control.p_gain,// rw
+        &motors[0].current_control.i_gain,// rw
+        &motors[0].current_control.v_current_control_integral_d,// rw
+        &motors[0].current_control.v_current_control_integral_q,// rw
+        &motors[0].current_control.Ibus,// ro
+        &motors[0].rotor.phase ,// ro
+        &motors[0].rotor.pll_pos ,// rw
+        &motors[0].rotor.pll_vel ,// rw
+        &motors[0].rotor.pll_kp ,// rw
+        &motors[0].rotor.pll_ki ,// rw
+        &motors[1].pos_setpoint, // rw
+        &motors[1].pos_gain, // rw
+        &motors[1].vel_setpoint,// rw
+        &motors[1].vel_gain,// rw
+        &motors[1].vel_integrator_gain,// rw
+        &motors[1].vel_integrator_current,// rw
+        &motors[1].vel_limit,// rw
+        &motors[1].current_setpoint,// rw
+        &motors[1].selftest_current, // rw
+        &motors[1].phase_inductance,// ro
+        &motors[1].phase_resistance,// ro
+        &motors[1].current_meas.phB,// ro
+        &motors[1].current_meas.phC,// ro
+        &motors[1].DC_calib.phB,// rw
+        &motors[1].DC_calib.phC,// rw
+        &motors[1].shunt_conductance,// rw
+        &motors[1].current_control.current_lim,// rw
+        &motors[1].current_control.p_gain,// rw
+        &motors[1].current_control.i_gain,// rw
+        &motors[1].current_control.v_current_control_integral_d,// rw
+        &motors[1].current_control.v_current_control_integral_q,// rw
+        &motors[1].current_control.Ibus,// ro
+        &motors[1].rotor.phase ,// ro
+        &motors[1].rotor.pll_pos ,// rw
+        &motors[1].rotor.pll_vel ,// rw
+        &motors[1].rotor.pll_kp ,// rw
+        &motors[1].rotor.pll_ki ,// rw
 
 };
 
 int * exposed_ints [] = {
-		&motors[0].control_mode, // rw
-		&motors[0].rotor.encoder_offset, // rw
-		&motors[0].rotor.encoder_state,  // ro
- 		&motors[0].error,                // rw
-		&motors[1].control_mode, // rw
-		&motors[1].rotor.encoder_offset, // rw
-		&motors[1].rotor.encoder_state,  // ro
-		&motors[1].error,                // rw
+        &motors[0].control_mode, // rw
+        &motors[0].rotor.encoder_offset, // rw
+        &motors[0].rotor.encoder_state,  // ro
+        &motors[0].error,                // rw
+        &motors[1].control_mode, // rw
+        &motors[1].rotor.encoder_offset, // rw
+        &motors[1].rotor.encoder_state,  // ro
+        &motors[1].error,                // rw
 };
 
 bool * exposed_bools [] = {
@@ -275,22 +277,22 @@ static void control_motor_loop(Motor_t* motor);
 /* Function implementations --------------------------------------------------*/
 
 void print_monitoring(int limit){
-	for(int i=0;i<limit;i++){
-		switch(monitoring_slots[i].type){
-		case 0:
-			printf("%f\t",*exposed_floats[monitoring_slots[i].index]);
-			break;
-		case 1:
-			printf("%u\t",*exposed_ints[monitoring_slots[i].index]);
-			break;
-		case 2:
-			printf("%d\t",*exposed_bools[monitoring_slots[i].index]);
-			break;
-		default:
-			i=100;
-		}
-	}
-	printf("\n");
+    for(int i=0;i<limit;i++){
+        switch(monitoring_slots[i].type){
+        case 0:
+            printf("%f\t",*exposed_floats[monitoring_slots[i].index]);
+            break;
+        case 1:
+            printf("%u\t",*exposed_ints[monitoring_slots[i].index]);
+            break;
+        case 2:
+            printf("%d\t",*exposed_bools[monitoring_slots[i].index]);
+            break;
+        default:
+            i=100;
+        }
+    }
+    printf("\n");
 }
 
 void set_pos_setpoint(Motor_t* motor, float pos_setpoint, float vel_feed_forward, float current_feed_forward) {
@@ -346,67 +348,67 @@ void motor_parse_cmd(uint8_t* buffer, int len) {
             set_current_setpoint(&motors[motor_number], current_feed_forward);
         }
     } else if (buffer[0] == 'g') { // GET
-    	// g <0:float,1:int,2:bool> index
-    	int type = 0;
-    	int index = 0;
-    	int numscan = sscanf((const char*)buffer, "g %u %u", &type, &index);
-    	if (numscan == 2) {
-    		switch(type){
-    		case 0 :{
-    			printf("%f\n",*exposed_floats[index]);
-    			break;
-    		};
-    		case 1 :{
-    			printf("%u\n",*exposed_ints[index]);
-    			break;
-    		};
-    		case 2 :{
-    			printf("%d\n",*exposed_bools[index]);
-    			break;
-    		};
-    	}
-    	}
+        // g <0:float,1:int,2:bool> index
+        int type = 0;
+        int index = 0;
+        int numscan = sscanf((const char*)buffer, "g %u %u", &type, &index);
+        if (numscan == 2) {
+            switch(type){
+            case 0 :{
+                printf("%f\n",*exposed_floats[index]);
+                break;
+            };
+            case 1 :{
+                printf("%u\n",*exposed_ints[index]);
+                break;
+            };
+            case 2 :{
+                printf("%d\n",*exposed_bools[index]);
+                break;
+            };
+        }
+        }
     } else if (buffer[0] == 's') { // SET
-    	// s <0:float,1:int,2:bool> index value
-    	int type = 0;
-    	int index = 0;
-    	int numscan = sscanf((const char*)buffer, "s %u %u", &type,&index);
-    	if (numscan == 2) {
-    		switch(type){
-    		case 0 :{
-    			sscanf((const char*)buffer, "s %u %u %f", &type,&index,exposed_floats[index]);
-    			break;
-    		};
-    		case 1 :{
-    			sscanf((const char*)buffer, "s %u %u %u", &type,&index,exposed_ints[index]);
-    			break;
-    		};
-    		case 2 :{
-    			int btmp = 0;
-    			sscanf((const char*)buffer, "s %u %u %d", &type,&index,&btmp);
-    			*exposed_bools[index] = btmp;
-    			break;
-    		};
-    		}
-    	}
+        // s <0:float,1:int,2:bool> index value
+        int type = 0;
+        int index = 0;
+        int numscan = sscanf((const char*)buffer, "s %u %u", &type,&index);
+        if (numscan == 2) {
+            switch(type){
+            case 0 :{
+                sscanf((const char*)buffer, "s %u %u %f", &type,&index,exposed_floats[index]);
+                break;
+            };
+            case 1 :{
+                sscanf((const char*)buffer, "s %u %u %u", &type,&index,exposed_ints[index]);
+                break;
+            };
+            case 2 :{
+                int btmp = 0;
+                sscanf((const char*)buffer, "s %u %u %d", &type,&index,&btmp);
+                *exposed_bools[index] = btmp;
+                break;
+            };
+            }
+        }
 
 
     } else if (buffer[0] == 'm') { // Monitor
-    	// m <0:float,1:int,2:bool> index monitoringslot
-    	int type = 0;
-    	int index = 0;
-    	int slot = 0;
-    	int numscan = sscanf((const char*)buffer, "m %u %u %u", &type,&index,&slot);
-    	if (numscan == 3) {
-    		monitoring_slots[slot].type = type;
-    		monitoring_slots[slot].index = index;
-    	}
+        // m <0:float,1:int,2:bool> index monitoringslot
+        int type = 0;
+        int index = 0;
+        int slot = 0;
+        int numscan = sscanf((const char*)buffer, "m %u %u %u", &type,&index,&slot);
+        if (numscan == 3) {
+            monitoring_slots[slot].type = type;
+            monitoring_slots[slot].index = index;
+        }
     } else if (buffer[0] == 'o') { // Output Monitoring
-    	int limit = 0;
-    	int numscan = sscanf((const char*)buffer, "o %u", &limit);
-		if (numscan == 1) {
-			print_monitoring(limit);
-		}
+        int limit = 0;
+        int numscan = sscanf((const char*)buffer, "o %u", &limit);
+        if (numscan == 1) {
+            print_monitoring(limit);
+        }
     }
 }
 
@@ -604,7 +606,7 @@ void pwm_trig_adc_cb(ADC_HandleTypeDef* hadc) {
 
     //Ensure ADCs are expected ones to simplify the logic below
     if (!(hadc == &hadc2 || hadc == &hadc3)){
-    	fail_global(ERROR_ADC_FAILED);
+        fail_global(ERROR_ADC_FAILED);
         return;
     };
 
@@ -695,8 +697,8 @@ void pwm_trig_adc_cb(ADC_HandleTypeDef* hadc) {
         check_timing(motor);
 
     } else {
-    	fail_global(ERROR_PWM_SRC_FAIL);
-	    return;
+        fail_global(ERROR_PWM_SRC_FAIL);
+        return;
     }
 
     uint32_t ADCValue;
@@ -707,7 +709,7 @@ void pwm_trig_adc_cb(ADC_HandleTypeDef* hadc) {
     }
     float current = phase_current_from_adcval(ADCValue, motor_nr);
     if(current == -1){
-      	motors[motor_nr].enable_control = false;
+        motors[motor_nr].enable_control = false;
         motors[motor_nr].selftest_ok = false;
         return;
     }
@@ -822,10 +824,10 @@ static bool measure_phase_resistance(Motor_t* motor, float test_current, float m
     static const int num_test_cycles = 3.0f / CURRENT_MEAS_PERIOD;
     float test_voltage = 0.0f;
     for (int i = 0; i < num_test_cycles; ++i) {
-    	osEvent evt = osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, SIGNAL_TIMEOUT);
+        osEvent evt = osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, SIGNAL_TIMEOUT);
         if( evt.status != osEventSignal){
-        	motor->error = ERROR_PHASE_RESISTANCE_MEASUREMENT_TIMEOUT;
-        	return false;
+            motor->error = ERROR_PHASE_RESISTANCE_MEASUREMENT_TIMEOUT;
+            return false;
         }
         float Ialpha = -0.5f * (motor->current_meas.phB + motor->current_meas.phC);
         test_voltage += (kI * CURRENT_MEAS_PERIOD) * (test_current - Ialpha);
@@ -860,10 +862,10 @@ static bool measure_phase_inductance(Motor_t* motor, float voltage_low, float vo
     static const int num_cycles = 5000;
     for (int t = 0; t < num_cycles; ++t) {
         for (int i = 0; i < 2; ++i) {
-        	if( osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, SIGNAL_TIMEOUT).status != osEventSignal){
-        		motor->error = ERROR_PHASE_INDUCTANCE_MEASUREMENT_TIMEOUT;
-        		return false;
-        	}
+            if( osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, SIGNAL_TIMEOUT).status != osEventSignal){
+                motor->error = ERROR_PHASE_INDUCTANCE_MEASUREMENT_TIMEOUT;
+                return false;
+            }
             Ialphas[i] += -motor->current_meas.phB - motor->current_meas.phC;
 
             //Test voltage along phase A
@@ -909,8 +911,8 @@ static bool calib_enc_offset(Motor_t* motor, float voltage_magnitude) {
     //go to rotor zero phase for 2s to get ready to scan
     for (int i = 0; i < start_lock_duration*CURRENT_MEAS_HZ; ++i) {
         if(osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, SIGNAL_TIMEOUT).status != osEventSignal){
-        	motor->error = ERROR_ENCODER_MEASUREMENT_TIMEOUT;
-        	return false;
+            motor->error = ERROR_ENCODER_MEASUREMENT_TIMEOUT;
+            return false;
         }
         queue_voltage_timings(motor, voltage_magnitude, 0.0f);
     }
@@ -918,8 +920,8 @@ static bool calib_enc_offset(Motor_t* motor, float voltage_magnitude) {
     for (float ph = -scan_range / 2.0f; ph < scan_range / 2.0f; ph += step_size) {
         for (int i = 0; i < dt_step*(float)CURRENT_MEAS_HZ; ++i) {
             if(osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, SIGNAL_TIMEOUT).status != osEventSignal){
-            	motor->error = ERROR_ENCODER_MEASUREMENT_TIMEOUT;
-            	return false;
+                motor->error = ERROR_ENCODER_MEASUREMENT_TIMEOUT;
+                return false;
             }
             float v_alpha = voltage_magnitude * arm_cos_f32(ph);
             float v_beta  = voltage_magnitude * arm_sin_f32(ph);
@@ -939,8 +941,8 @@ static bool calib_enc_offset(Motor_t* motor, float voltage_magnitude) {
     for (float ph = scan_range / 2.0f; ph > -scan_range / 2.0f; ph -= step_size) {
         for (int i = 0; i < dt_step*(float)CURRENT_MEAS_HZ; ++i) {
             if (osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, SIGNAL_TIMEOUT).status != osEventSignal){
-            	motor->error = ERROR_ENCODER_MEASUREMENT_TIMEOUT;
-            	return false;
+                motor->error = ERROR_ENCODER_MEASUREMENT_TIMEOUT;
+                return false;
             }
             float v_alpha = voltage_magnitude * arm_cos_f32(ph);
             float v_beta  = voltage_magnitude * arm_sin_f32(ph);
@@ -1110,8 +1112,8 @@ static bool FOC_current(Motor_t* motor, float Id_des, float Iq_des) {
 static void control_motor_loop(Motor_t* motor) {
     while (motor->enable_control) {
         if(osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, SIGNAL_TIMEOUT).status != osEventSignal){
-        	motor->error = ERROR_FOC_MEASUREMENT_TIMEOUT;
-        	break;
+            motor->error = ERROR_FOC_MEASUREMENT_TIMEOUT;
+            break;
         }
         update_rotor(&motor->rotor);
 
@@ -1152,15 +1154,15 @@ static void control_motor_loop(Motor_t* motor) {
 
         //Velocity integrator (behaviour dependent on limiting)
         if (motor->control_mode == CURRENT_CONTROL ) {
-        	//reset integral if not in use
-        	motor->vel_integrator_current = 0.0f;
+            //reset integral if not in use
+            motor->vel_integrator_current = 0.0f;
         } else {
-        	if (limited) {
-				//@TODO make decayfactor configurable
-				motor->vel_integrator_current *= 0.99f;
-			} else {
-				motor->vel_integrator_current += (motor->vel_integrator_gain * CURRENT_MEAS_PERIOD) * v_err;
-			}
+            if (limited) {
+                //@TODO make decayfactor configurable
+                motor->vel_integrator_current *= 0.99f;
+            } else {
+                motor->vel_integrator_current += (motor->vel_integrator_gain * CURRENT_MEAS_PERIOD) * v_err;
+            }
         }
 
         //Execute current command
@@ -1184,20 +1186,20 @@ void motor_thread(void const * argument) {
 
     for(;;){
         if(motor->do_selftest){
-        	__HAL_TIM_MOE_ENABLE(motor->motor_timer);// enable pwm outputs
-        	osDelay(10);
+            __HAL_TIM_MOE_ENABLE(motor->motor_timer);// enable pwm outputs
+            osDelay(10);
             motor_selftest(motor);    
             if(!motor->selftest_ok){
-            	__HAL_TIM_MOE_DISABLE(motor->motor_timer);// disables pwm outputs
+                __HAL_TIM_MOE_DISABLE(motor->motor_timer);// disables pwm outputs
             }
             motor->do_selftest = false;
         }
         
         if(motor->selftest_ok && motor->enable_control){
-        	__HAL_TIM_MOE_ENABLE(motor->motor_timer);
-        	osDelay(10);
-        	control_motor_loop(motor);
-        	__HAL_TIM_MOE_DISABLE_UNCONDITIONALLY(motor->motor_timer);
+            __HAL_TIM_MOE_ENABLE(motor->motor_timer);
+            osDelay(10);
+            control_motor_loop(motor);
+            __HAL_TIM_MOE_DISABLE_UNCONDITIONALLY(motor->motor_timer);
             if(motor->enable_control){ // if control is still enabled, we exited because of error
                 motor->selftest_ok = false;    
                 motor->enable_control = false;
