@@ -23,13 +23,15 @@
 #define M_PI 3.14159265358979323846f
 #endif
 
+//#define DEBUG_PRINT
+
 /* Private macros ------------------------------------------------------------*/
 /* Private typedef -----------------------------------------------------------*/
 /* Global constant data ------------------------------------------------------*/
 /* Global variables ----------------------------------------------------------*/
 //This value is updated by the DC-bus reading ADC.
 //Arbitrary non-zero inital value to avoid division by zero if ADC reading is late
-float vbus_voltage = 12.0f; 
+float vbus_voltage = 12.0f;
 
 //@TODO stick parameter into struct
 #define ENCODER_CPR (4096)
@@ -300,20 +302,26 @@ void set_pos_setpoint(Motor_t* motor, float pos_setpoint, float vel_feed_forward
     motor->vel_setpoint = vel_feed_forward;
     motor->current_setpoint = current_feed_forward;
     motor->control_mode = POSITION_CONTROL;
+#ifdef DEBUG_PRINT
     printf("POSITION_CONTROL %6.0f %3.3f %3.3f\n", motor->pos_setpoint, motor->vel_setpoint, motor->current_setpoint);
+#endif
 }
 
 void set_vel_setpoint(Motor_t* motor, float vel_setpoint, float current_feed_forward) {
     motor->vel_setpoint = vel_setpoint;
     motor->current_setpoint = current_feed_forward;
     motor->control_mode = VELOCITY_CONTROL;
+#ifdef DEBUG_PRINT
     printf("VELOCITY_CONTROL %3.3f %3.3f\n", motor->vel_setpoint, motor->current_setpoint);
+#endif
 }
 
 void set_current_setpoint(Motor_t* motor, float current_setpoint) {
     motor->current_setpoint = current_setpoint;
     motor->control_mode = CURRENT_CONTROL;
+#ifdef DEBUG_PRINT
     printf("CURRENT_CONTROL %3.3f\n", motor->current_setpoint);
+#endif
 }
 
 void motor_parse_cmd(uint8_t* buffer, int len) {
