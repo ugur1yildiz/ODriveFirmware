@@ -34,7 +34,7 @@
 float vbus_voltage = 12.0f;
 
 //@TODO stick parameter into struct
-#define ENCODER_CPR (4096)
+#define ENCODER_CPR (600*4)
 static float elec_rad_per_enc = 7.0 * 2 * M_PI * (1.0f / (float)ENCODER_CPR);
 
 //@TODO: Migrate to C++, clearly we are actually doing object oriented code here...
@@ -51,14 +51,14 @@ Motor_t motors[] = {
         .vel_integrator_current = 0.0f, // [A]
         .vel_limit = 20000.0f, // [counts/s]
         .current_setpoint = 0.0f, // [A]
-        .selftest_current = 10.0f, // [A]
+        .calibration_current = 10.0f, // [A]
         .phase_inductance = 0.0f, // to be set by measure_phase_inductance
         .phase_resistance = 0.0f, // to be set by measure_phase_resistance
         .motor_thread = 0,
         .thread_ready = false,
         .enable_control = false,
-        .do_selftest = false,
-        .selftest_ok = false,           
+        .do_calibration = false,
+        .calibration_ok = false,
         .motor_timer = &htim1,
         .next_timings = {TIM_1_8_PERIOD_CLOCKS/2, TIM_1_8_PERIOD_CLOCKS/2, TIM_1_8_PERIOD_CLOCKS/2},
         .control_deadline = TIM_1_8_PERIOD_CLOCKS,
@@ -108,14 +108,14 @@ Motor_t motors[] = {
         .vel_integrator_current = 0.0f, // [A]
         .vel_limit = 20000.0f, // [counts/s]
         .current_setpoint = 0.0f, // [A]
-        .selftest_current = 10.0f, // [A]
+        .calibration_current = 10.0f, // [A]
         .phase_inductance = 0.0f, // to be set by measure_phase_inductance
         .phase_resistance = 0.0f, // to be set by measure_phase_resistance
         .motor_thread = 0,
         .thread_ready = false,
         .enable_control = false,
-        .do_selftest = false,
-        .selftest_ok = false,         
+        .do_calibration = false,
+        .calibration_ok = false,
         .motor_timer = &htim8,
         .next_timings = {TIM_1_8_PERIOD_CLOCKS/2, TIM_1_8_PERIOD_CLOCKS/2, TIM_1_8_PERIOD_CLOCKS/2},
         .control_deadline = (3*TIM_1_8_PERIOD_CLOCKS)/2,
@@ -175,7 +175,7 @@ monitoring_slot monitoring_slots[] = {
 
 /* variables exposed to usb interface via set/get/monitor
  * If you change something here, don't forget to regenerate the python interface with generate_api.py
- * ro/rw : read only/read write -> ro prevents the code generator from generating setters 
+ * ro/rw : read only/read write -> ro prevents the code generator from generating setter
  * */
 
 float * exposed_floats [] = {
@@ -189,7 +189,7 @@ float * exposed_floats [] = {
         &motors[0].vel_integrator_current,// rw
         &motors[0].vel_limit,// rw
         &motors[0].current_setpoint,// rw
-        &motors[0].selftest_current, // rw
+        &motors[0].calibration_current, // rw
         &motors[0].phase_inductance,// ro
         &motors[0].phase_resistance,// ro
         &motors[0].current_meas.phB,// ro
@@ -216,7 +216,7 @@ float * exposed_floats [] = {
         &motors[1].vel_integrator_current,// rw
         &motors[1].vel_limit,// rw
         &motors[1].current_setpoint,// rw
-        &motors[1].selftest_current, // rw
+        &motors[1].calibration_current, // rw
         &motors[1].phase_inductance,// ro
         &motors[1].phase_resistance,// ro
         &motors[1].current_meas.phB,// ro
@@ -252,12 +252,12 @@ int * exposed_ints [] = {
 bool * exposed_bools [] = {
         &motors[0].thread_ready,  // ro
         &motors[0].enable_control,// rw
-        &motors[0].do_selftest,   // rw
-        &motors[0].selftest_ok,   // ro
+        &motors[0].do_calibration,   // rw
+        &motors[0].calibration_ok,   // ro
         &motors[1].thread_ready,  // ro
         &motors[1].enable_control,// rw
-        &motors[1].do_selftest,   // rw
-        &motors[1].selftest_ok,   // ro
+        &motors[1].do_calibration,   // rw
+        &motors[1].calibration_ok,   // ro
 };
 
 
@@ -442,10 +442,10 @@ void init_motor_control() {
 static void fail_global(int error){
     motors[0].error = error;
     motors[0].enable_control = false;
-    motors[0].selftest_ok = false;
+    motors[0].calibration_ok = false;
     motors[1].error = error;
     motors[1].enable_control = false;
-    motors[1].selftest_ok = false;
+    motors[1].calibration_ok = false;
 }
 
 // Set up the gate drivers
@@ -718,7 +718,7 @@ void pwm_trig_adc_cb(ADC_HandleTypeDef* hadc) {
     float current = phase_current_from_adcval(ADCValue, motor_nr);
     if(current == -1){
         motors[motor_nr].enable_control = false;
-        motors[motor_nr].selftest_ok = false;
+        motors[motor_nr].calibration_ok = false;
         return;
     }
 
@@ -965,18 +965,18 @@ static bool calib_enc_offset(Motor_t* motor, float voltage_magnitude) {
     return true;
 }
 
-static void motor_selftest(Motor_t* motor){
-    motor->selftest_ok = false;
+static void motor_calibration(Motor_t* motor){
+    motor->calibration_ok = false;
     motor->error = ERROR_NO_ERROR;
     
-    if(! measure_phase_resistance(motor, motor->selftest_current, 1.0f)){
+    if(! measure_phase_resistance(motor, motor->calibration_current, 1.0f)){
         return;
     }
     if(! measure_phase_inductance(motor, -1.0f, 1.0f)){
         return;
     }
     
-    if(! calib_enc_offset(motor, motor->selftest_current * motor->phase_resistance)){
+    if(! calib_enc_offset(motor, motor->calibration_current * motor->phase_resistance)){
         return;
     }
     
@@ -991,13 +991,13 @@ static void motor_selftest(Motor_t* motor){
     motor->rotor.pll_kp = 2.0f * rotor_pll_bandwidth;
     //Check that we don't get problems with discrete time approximation
     if(!(CURRENT_MEAS_PERIOD * motor->rotor.pll_kp < 1.0f)){
-        motor->error = ERROR_SELFTEST_TIMING;
+        motor->error = ERROR_CALIBRATION_TIMING;
         return;
     }
     //Critically damped
     motor->rotor.pll_ki = 0.25f * (motor->rotor.pll_kp * motor->rotor.pll_kp);
     
-    motor->selftest_ok = true;
+    motor->calibration_ok = true;
     
 }
 
@@ -1111,8 +1111,8 @@ static bool FOC_current(Motor_t* motor, float Id_des, float Iq_des) {
 
     //Check we meet deadlines after queueing
     if(!(check_timing(motor) < motor->control_deadline)){
-        motor->error = ERROR_FOC_TIMING;    
-        return false;        
+        motor->error = ERROR_FOC_TIMING;
+        return false;
     }
     return true;
 }
@@ -1193,23 +1193,23 @@ void motor_thread(void const * argument) {
     __HAL_TIM_MOE_DISABLE(motor->motor_timer); // TODO this does not belong here, add to board startup code
 
     for(;;){
-        if(motor->do_selftest){
+        if(motor->do_calibration){
             __HAL_TIM_MOE_ENABLE(motor->motor_timer);// enable pwm outputs
             osDelay(10);
-            motor_selftest(motor);    
-            if(!motor->selftest_ok){
+            motor_calibration(motor);
+            if(!motor->calibration_ok){
                 __HAL_TIM_MOE_DISABLE(motor->motor_timer);// disables pwm outputs
             }
-            motor->do_selftest = false;
+            motor->do_calibration = false;
         }
         
-        if(motor->selftest_ok && motor->enable_control){
+        if(motor->calibration_ok && motor->enable_control){
             __HAL_TIM_MOE_ENABLE(motor->motor_timer);
             osDelay(10);
             control_motor_loop(motor);
             __HAL_TIM_MOE_DISABLE_UNCONDITIONALLY(motor->motor_timer);
             if(motor->enable_control){ // if control is still enabled, we exited because of error
-                motor->selftest_ok = false;    
+                motor->calibration_ok = false;
                 motor->enable_control = false;
             }
         }

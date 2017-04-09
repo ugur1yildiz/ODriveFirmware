@@ -25,7 +25,7 @@ typedef enum {
     ERROR_ENCODER_DIRECTION,
     ERROR_ENCODER_MEASUREMENT_TIMEOUT,
     ERROR_ADC_FAILED,
-    ERROR_SELFTEST_TIMING,
+    ERROR_CALIBRATION_TIMING,
     ERROR_FOC_TIMING,
     ERROR_FOC_MEASUREMENT_TIMEOUT,
     ERROR_SCAN_MOTOR_TIMING,
@@ -33,7 +33,6 @@ typedef enum {
     ERROR_GATEDRIVER_INVALID_GAIN,
     ERROR_PWM_SRC_FAIL,
 } Error_t;
-
 
 // Note: these should be sorted from lowest level of control to
 // highest level of control, to allow "<" style comparisons.
@@ -81,14 +80,14 @@ typedef struct {
     float vel_integrator_current;
     float vel_limit;
     float current_setpoint;
-    float selftest_current;
+    float calibration_current;
     float phase_inductance;
     float phase_resistance;
     osThreadId motor_thread;
     bool thread_ready;
-    bool enable_control; // enable/disable via usb to start motor control. will be set to false again in case of errors.requires selftest_ok=true
-    bool do_selftest; //  trigger motor selftest. will be reset to false after self test
-    bool selftest_ok; 
+    bool enable_control; // enable/disable via usb to start motor control. will be set to false again in case of errors.requires calibration_ok=true
+    bool do_calibration; //  trigger motor calibration. will be reset to false after self test
+    bool calibration_ok;
     TIM_HandleTypeDef* motor_timer;
     uint16_t next_timings[3];
     uint16_t control_deadline;
@@ -102,7 +101,7 @@ typedef struct {
     uint16_t timing_log[TIMING_LOG_SIZE];
 } Motor_t;
 
-typedef struct{   
+typedef struct{
         int type;
         int index;
 } monitoring_slot;
