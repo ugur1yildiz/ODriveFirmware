@@ -439,13 +439,21 @@ void init_motor_control() {
 }
 
 
-static void fail_global(int error){
-    motors[0].error = error;
-    motors[0].enable_control = false;
-    motors[0].calibration_ok = false;
-    motors[1].error = error;
-    motors[1].enable_control = false;
-    motors[1].calibration_ok = false;
+static void global_fault(int error){
+
+    //Disable motors NOW!
+    for (int i = 0; i < num_motors; ++i) {
+        __HAL_TIM_MOE_DISABLE_UNCONDITIONALLY(motors[i].motor_timer);
+    }
+
+    //Set fault codes, etc.
+    for (int i = 0; i < num_motors; ++i) {
+        motors[i].error = error;
+        motors[i].enable_control = false;
+        motors[i].calibration_ok = false;
+    }
+
+    //TODO disable brake resistor
 }
 
 // Set up the gate drivers
@@ -614,7 +622,7 @@ void pwm_trig_adc_cb(ADC_HandleTypeDef* hadc) {
 
     //Ensure ADCs are expected ones to simplify the logic below
     if (!(hadc == &hadc2 || hadc == &hadc3)){
-        fail_global(ERROR_ADC_FAILED);
+        global_fault(ERROR_ADC_FAILED);
         return;
     };
 
@@ -705,7 +713,7 @@ void pwm_trig_adc_cb(ADC_HandleTypeDef* hadc) {
         check_timing(motor);
 
     } else {
-        fail_global(ERROR_PWM_SRC_FAIL);
+        global_fault(ERROR_PWM_SRC_FAIL);
         return;
     }
 
