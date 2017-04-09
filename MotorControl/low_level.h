@@ -6,36 +6,43 @@
 #include <cmsis_os.h>
 #include "drv8301.h"
 
-
-#define SIGNAL_TIMEOUT 100 // default timeout waiting for phase measurement signals
-
-// so we can expose a int pointer to the motor->error variable
-#define ERROR_NO_ERROR 0
-#define ERROR_PHASE_RESISTANCE_TIMING 1
-#define ERROR_PHASE_RESISTANCE_MEASUREMENT_TIMEOUT 2
-#define ERROR_PHASE_RESISTANCE_OUT_OF_RANGE 3
-#define ERROR_PHASE_INDUCTANCE_TIMING 4
-#define ERROR_PHASE_INDUCTANCE_MEASUREMENT_TIMEOUT 5
-#define ERROR_PHASE_INDUCTANCE_OUT_OF_RANGE 6
-#define ERROR_ENCODER_DIRECTION 7
-#define ERROR_ENCODER_MEASUREMENT_TIMEOUT 8
-#define ERROR_ADC_FAILED 9
-#define ERROR_SELFTEST_TIMING 10
-#define ERROR_FOC_TIMING 11
-#define ERROR_FOC_MEASUREMENT_TIMEOUT 12
-#define ERROR_SCAN_MOTOR_TIMING 13
-#define ERROR_FOC_VOLTAGE_TIMING 14
-#define ERROR_GATEDRIVER_INVALID_GAIN 15
-#define ERROR_PWM_SRC_FAIL 16
-
-#define POSITION_CONTROL 0
-#define VELOCITY_CONTROL 1
-#define CURRENT_CONTROL 2
+//default timeout waiting for phase measurement signals
+#define SIGNAL_TIMEOUT 5 // [ms] 
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum {
     M_SIGNAL_PH_CURRENT_MEAS = 1u << 0
 } Motor_thread_signals_t;
+
+typedef enum {
+    ERROR_NO_ERROR,
+    ERROR_PHASE_RESISTANCE_TIMING,
+    ERROR_PHASE_RESISTANCE_MEASUREMENT_TIMEOUT,
+    ERROR_PHASE_RESISTANCE_OUT_OF_RANGE,
+    ERROR_PHASE_INDUCTANCE_TIMING,
+    ERROR_PHASE_INDUCTANCE_MEASUREMENT_TIMEOUT,
+    ERROR_PHASE_INDUCTANCE_OUT_OF_RANGE,
+    ERROR_ENCODER_DIRECTION,
+    ERROR_ENCODER_MEASUREMENT_TIMEOUT,
+    ERROR_ADC_FAILED,
+    ERROR_SELFTEST_TIMING,
+    ERROR_FOC_TIMING,
+    ERROR_FOC_MEASUREMENT_TIMEOUT,
+    ERROR_SCAN_MOTOR_TIMING,
+    ERROR_FOC_VOLTAGE_TIMING,
+    ERROR_GATEDRIVER_INVALID_GAIN,
+    ERROR_PWM_SRC_FAIL,
+} Error_t;
+
+
+// Note: these should be sorted from lowest level of control to
+// highest level of control, to allow "<" style comparisons.
+typedef enum {
+    CTRL_MODE_VOLTAGE_CONTROL,
+    CTRL_MODE_CURRENT_CONTROL,
+    CTRL_MODE_VELOCITY_CONTROL,
+    CTRL_MODE_POSITION_CONTROL
+} Motor_control_mode_t;
 
 typedef struct {
     float phB;
@@ -64,7 +71,7 @@ typedef struct {
 
 #define TIMING_LOG_SIZE 16
 typedef struct {
-    int control_mode;
+    Motor_control_mode_t control_mode;
     int error;
     float pos_setpoint;
     float pos_gain;

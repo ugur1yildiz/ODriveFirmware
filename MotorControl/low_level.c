@@ -41,7 +41,7 @@ static float elec_rad_per_enc = 7.0 * 2 * M_PI * (1.0f / (float)ENCODER_CPR);
 //@TODO: For nice encapsulation, consider not having the motor objects public
 Motor_t motors[] = {
     {   //M0
-        .control_mode = CURRENT_CONTROL,
+        .control_mode = CTRL_MODE_CURRENT_CONTROL,
         .error = ERROR_NO_ERROR,
         .pos_setpoint = 0.0f,
         .pos_gain = 20.0f, // [(counts/s) / counts]
@@ -98,7 +98,7 @@ Motor_t motors[] = {
         .timing_log = {0}
     },
     {   //M1
-        .control_mode = CURRENT_CONTROL,
+        .control_mode = CTRL_MODE_CURRENT_CONTROL,
         .error = ERROR_NO_ERROR,
         .pos_setpoint = 0.0f,
         .pos_gain = 20.0f, // [(counts/s) / counts]
@@ -239,11 +239,11 @@ float * exposed_floats [] = {
 };
 
 int * exposed_ints [] = {
-        &motors[0].control_mode, // rw
+        (int*)&motors[0].control_mode, // rw
         &motors[0].rotor.encoder_offset, // rw
         &motors[0].rotor.encoder_state,  // ro
         &motors[0].error,                // rw
-        &motors[1].control_mode, // rw
+        (int*)&motors[1].control_mode, // rw
         &motors[1].rotor.encoder_offset, // rw
         &motors[1].rotor.encoder_state,  // ro
         &motors[1].error,                // rw
@@ -301,7 +301,7 @@ void set_pos_setpoint(Motor_t* motor, float pos_setpoint, float vel_feed_forward
     motor->pos_setpoint = pos_setpoint;
     motor->vel_setpoint = vel_feed_forward;
     motor->current_setpoint = current_feed_forward;
-    motor->control_mode = POSITION_CONTROL;
+    motor->control_mode = CTRL_MODE_POSITION_CONTROL;
 #ifdef DEBUG_PRINT
     printf("POSITION_CONTROL %6.0f %3.3f %3.3f\n", motor->pos_setpoint, motor->vel_setpoint, motor->current_setpoint);
 #endif
@@ -310,7 +310,7 @@ void set_pos_setpoint(Motor_t* motor, float pos_setpoint, float vel_feed_forward
 void set_vel_setpoint(Motor_t* motor, float vel_setpoint, float current_feed_forward) {
     motor->vel_setpoint = vel_setpoint;
     motor->current_setpoint = current_feed_forward;
-    motor->control_mode = VELOCITY_CONTROL;
+    motor->control_mode = CTRL_MODE_VELOCITY_CONTROL;
 #ifdef DEBUG_PRINT
     printf("VELOCITY_CONTROL %3.3f %3.3f\n", motor->vel_setpoint, motor->current_setpoint);
 #endif
@@ -318,7 +318,7 @@ void set_vel_setpoint(Motor_t* motor, float vel_setpoint, float current_feed_for
 
 void set_current_setpoint(Motor_t* motor, float current_setpoint) {
     motor->current_setpoint = current_setpoint;
-    motor->control_mode = CURRENT_CONTROL;
+    motor->control_mode = CTRL_MODE_CURRENT_CONTROL;
 #ifdef DEBUG_PRINT
     printf("CURRENT_CONTROL %3.3f\n", motor->current_setpoint);
 #endif
@@ -1128,7 +1128,7 @@ static void control_motor_loop(Motor_t* motor) {
         //Position control
         //@TODO Decide if we want to use encoder or pll position here
         float vel_des = motor->vel_setpoint;
-        if (motor->control_mode >= POSITION_CONTROL) {
+        if (motor->control_mode >= CTRL_MODE_POSITION_CONTROL) {
             float pos_err = motor->pos_setpoint - motor->rotor.pll_pos;
             vel_des += motor->pos_gain * pos_err;
         }
@@ -1141,7 +1141,7 @@ static void control_motor_loop(Motor_t* motor) {
         //Velocity control
         float Iq = motor->current_setpoint;
         float v_err = vel_des - motor->rotor.pll_vel;
-        if (motor->control_mode != CURRENT_CONTROL) {
+        if (motor->control_mode >=  CTRL_MODE_VELOCITY_CONTROL) {
             Iq += motor->vel_gain * v_err;
         }
 
@@ -1161,7 +1161,7 @@ static void control_motor_loop(Motor_t* motor) {
         }
 
         //Velocity integrator (behaviour dependent on limiting)
-        if (motor->control_mode == CURRENT_CONTROL ) {
+        if (motor->control_mode < CTRL_MODE_VELOCITY_CONTROL ) {
             //reset integral if not in use
             motor->vel_integrator_current = 0.0f;
         } else {
