@@ -19,11 +19,13 @@
 #include <utils.h>
 
 /* Private defines -----------------------------------------------------------*/
+
+// #define STANDALONE_MODE //Drive operates without USB communication
+// #define DEBUG_PRINT
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846f
 #endif
-
-//#define DEBUG_PRINT
 
 /* Private macros ------------------------------------------------------------*/
 /* Private typedef -----------------------------------------------------------*/
@@ -269,6 +271,7 @@ static void sync_timers(TIM_HandleTypeDef* htim_a, TIM_HandleTypeDef* htim_b,
         uint16_t TIM_CLOCKSOURCE_ITRx, uint16_t count_offset);
 static float phase_current_from_adcval(uint32_t ADCValue, int motornum);
 static uint16_t check_timing(Motor_t* motor);
+static void update_brake_current(float brake_current);
 static void queue_voltage_timings(Motor_t* motor, float v_alpha, float v_beta);
 static bool measure_phase_resistance(Motor_t* motor, float test_current, float max_voltage);
 static bool measure_phase_inductance(Motor_t* motor, float voltage_low, float voltage_high);
@@ -453,7 +456,8 @@ static void global_fault(int error){
         motors[i].calibration_ok = false;
     }
 
-    //TODO disable brake resistor
+    //disable brake resistor
+    update_brake_current(0.0f);
 }
 
 // Set up the gate drivers
@@ -973,19 +977,19 @@ static bool calib_enc_offset(Motor_t* motor, float voltage_magnitude) {
     return true;
 }
 
-static void motor_calibration(Motor_t* motor){
+static bool motor_calibration(Motor_t* motor){
     motor->calibration_ok = false;
     motor->error = ERROR_NO_ERROR;
     
     if(! measure_phase_resistance(motor, motor->calibration_current, 1.0f)){
-        return;
+        return false;
     }
     if(! measure_phase_inductance(motor, -1.0f, 1.0f)){
-        return;
+        return false;
     }
     
     if(! calib_enc_offset(motor, motor->calibration_current * motor->phase_resistance)){
-        return;
+        return false;
     }
     
     //Calculate current control gains
@@ -1000,13 +1004,13 @@ static void motor_calibration(Motor_t* motor){
     //Check that we don't get problems with discrete time approximation
     if(!(CURRENT_MEAS_PERIOD * motor->rotor.pll_kp < 1.0f)){
         motor->error = ERROR_CALIBRATION_TIMING;
-        return;
+        return false;
     }
     //Critically damped
     motor->rotor.pll_ki = 0.25f * (motor->rotor.pll_kp * motor->rotor.pll_kp);
     
     motor->calibration_ok = true;
-    
+    return true;
 }
 
 
@@ -1198,7 +1202,12 @@ void motor_thread(void const * argument) {
     motor->thread_ready = true;
 
     // oskar you have to take a look at this, i dont know enough about the timer how/why..
-    __HAL_TIM_MOE_DISABLE(motor->motor_timer); // TODO this does not belong here, add to board startup code
+    __HAL_TIM_MOE_DISABLE_UNCONDITIONALLY(motor->motor_timer); // TODO this does not belong here, add to board startup code
+
+#ifdef STANDALONE_MODE
+    motor->do_calibration = true;
+    motor->enable_control = true;
+#endif
 
     for(;;){
         if(motor->do_calibration){
@@ -1206,7 +1215,7 @@ void motor_thread(void const * argument) {
             osDelay(10);
             motor_calibration(motor);
             if(!motor->calibration_ok){
-                __HAL_TIM_MOE_DISABLE(motor->motor_timer);// disables pwm outputs
+                __HAL_TIM_MOE_DISABLE_UNCONDITIONALLY(motor->motor_timer);// disables pwm outputs
             }
             motor->do_calibration = false;
         }
