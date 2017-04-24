@@ -632,7 +632,6 @@ void pwm_trig_adc_cb(ADC_HandleTypeDef* hadc) {
 
     bool current_meas_not_DC_CAL;
     Motor_t* motor;
-    int motor_nr = 0;
 
     // Check if this trigger was the CC4 channel, used for actual current measurement at SVM vector 0
     // or the update trigger, which is used for DC_CAL measurement at SVM vector 7
@@ -643,8 +642,7 @@ void pwm_trig_adc_cb(ADC_HandleTypeDef* hadc) {
     if (reg_edge != ADC_EXTERNALTRIGCONVEDGE_NONE) {
         //We are measuring M1 DC_CAL here
         current_meas_not_DC_CAL = false;
-        motor_nr = 1;
-        motor = &motors[motor_nr];
+        motor = &motors[1];
         //Next measurement on this motor will be M1 current measurement
         HAL_GPIO_WritePin(M1_DC_CAL_GPIO_Port, M1_DC_CAL_Pin, GPIO_PIN_RESET);
         //Next measurement on this ADC will be M0 current
@@ -665,8 +663,7 @@ void pwm_trig_adc_cb(ADC_HandleTypeDef* hadc) {
     } else if (inj_src == ADC_EXTERNALTRIGINJECCONV_T1_CC4) {
         //We are measuring M0 current here
         current_meas_not_DC_CAL = true;
-        motor_nr = 0;
-        motor = &motors[motor_nr];
+        motor = &motors[0];
         //Next measurement on this motor will be M0 DC_CAL measurement
         HAL_GPIO_WritePin(M0_DC_CAL_GPIO_Port, M0_DC_CAL_Pin, GPIO_PIN_SET);
         //Next measurement on this ADC will be M1 current
@@ -687,8 +684,7 @@ void pwm_trig_adc_cb(ADC_HandleTypeDef* hadc) {
     } else if (inj_src == ADC_EXTERNALTRIGINJECCONV_T8_CC4) {
         //We are measuring M1 current here
         current_meas_not_DC_CAL = true;
-        motor_nr = 1;
-        motor = &motors[motor_nr];
+        motor = &motors[1];
         //Next measurement on this motor will be M1 DC_CAL measurement
         HAL_GPIO_WritePin(M1_DC_CAL_GPIO_Port, M1_DC_CAL_Pin, GPIO_PIN_SET);
         //Next measurement on this ADC will be M0 DC_CAL
@@ -703,8 +699,7 @@ void pwm_trig_adc_cb(ADC_HandleTypeDef* hadc) {
     } else if (inj_src == ADC_EXTERNALTRIGINJECCONV_T1_TRGO) {
         //We are measuring M0 DC_CAL here
         current_meas_not_DC_CAL = false;
-        motor_nr = 0;
-        motor = &motors[motor_nr];
+        motor = &motors[0];
         //Next measurement on this motor will be M0 current measurement
         HAL_GPIO_WritePin(M0_DC_CAL_GPIO_Port, M0_DC_CAL_Pin, GPIO_PIN_RESET);
         //Next measurement on this ADC will be M1 DC_CAL
