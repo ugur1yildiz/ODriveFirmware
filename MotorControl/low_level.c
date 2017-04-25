@@ -76,7 +76,9 @@ Motor_t motors[] = {
             .RxTimeOut = false,
             .enableTimeOut = false
         },
+        // .gate_driver_regs Init by DRV8301_setup
         .shunt_conductance = 1.0f/0.0005f, //[S]
+        .phase_current_rev_gain = 0.0f, // to be set by DRV8301_setup
         .current_control = {
             // .current_lim = 75.0f, //[A] //Note: consistent with 40v/v gain
             .current_lim = 10.0f, //[A]
@@ -133,7 +135,9 @@ Motor_t motors[] = {
             .RxTimeOut = false,
             .enableTimeOut = false
         },
+        // .gate_driver_regs Init by DRV8301_setup
         .shunt_conductance = 1.0f/0.0005f, //[S]
+        .phase_current_rev_gain = 0.0f, // to be set by DRV8301_setup
         .current_control = {
             // .current_lim = 75.0f, //[A] //Note: consistent with 40v/v gain
             .current_lim = 10.0f, //[A]
@@ -164,9 +168,6 @@ static const float one_by_sqrt3 = 0.57735026919f;
 static const float sqrt3_by_2 = 0.86602540378;
 
 /* Private variables ---------------------------------------------------------*/
-//Local view of DRV registers
-//@TODO: Include gate_driver_regs in motor object instead
-static DRV_SPI_8301_Vars_t gate_driver_regs[2/*num_motors*/];
 static float brake_resistance = 2.0f; // [ohm]
 
 /* Monitoring */
@@ -264,12 +265,12 @@ bool * exposed_bools [] = {
 
 
 /* Private function prototypes -----------------------------------------------*/
-static void DRV8301_setup(Motor_t* motor, DRV_SPI_8301_Vars_t* local_regs);
+static void DRV8301_setup(Motor_t* motor);
 static void start_adc_pwm();
 static void start_pwm(TIM_HandleTypeDef* htim);
 static void sync_timers(TIM_HandleTypeDef* htim_a, TIM_HandleTypeDef* htim_b,
         uint16_t TIM_CLOCKSOURCE_ITRx, uint16_t count_offset);
-static float phase_current_from_adcval(uint32_t ADCValue, int motornum);
+static float phase_current_from_adcval(Motor_t* motor, uint32_t ADCValue);
 static uint16_t check_timing(Motor_t* motor);
 static void update_brake_current(float brake_current);
 static void queue_voltage_timings(Motor_t* motor, float v_alpha, float v_beta);
@@ -426,8 +427,8 @@ void motor_parse_cmd(uint8_t* buffer, int len) {
 // Initalises the low level motor control and then starts the motor control threads
 void init_motor_control() {
     //Init gate drivers
-    DRV8301_setup(&motors[0], &gate_driver_regs[0]);
-    DRV8301_setup(&motors[1], &gate_driver_regs[1]);
+    DRV8301_setup(&motors[0]);
+    DRV8301_setup(&motors[1]);
 
     // Start PWM and enable adc interrupts/callbacks
     start_adc_pwm();
@@ -461,11 +462,12 @@ static void global_fault(int error){
 }
 
 // Set up the gate drivers
-//@TODO stick DRV_SPI_8301_Vars_t in motor
-static void DRV8301_setup(Motor_t* motor, DRV_SPI_8301_Vars_t* local_regs) {
-    for (int i = 0; i < num_motors; ++i) {
-        DRV8301_enable(&motor->gate_driver);
-        DRV8301_setupSpi(&motor->gate_driver, local_regs);
+static void DRV8301_setup(Motor_t* motor) {
+        DRV8301_Obj* gate_driver = &motor->gate_driver;
+        DRV_SPI_8301_Vars_t* local_regs = &motor->gate_driver_regs;
+
+        DRV8301_enable(gate_driver);
+        DRV8301_setupSpi(gate_driver, local_regs);
 
         //@TODO we can use reporting only if we actually wire up the nOCTW pin
         local_regs->Ctrl_Reg_1.OC_MODE = DRV8301_OcMode_LatchShutDown;
@@ -475,11 +477,29 @@ static void DRV8301_setup(Motor_t* motor, DRV_SPI_8301_Vars_t* local_regs) {
         //40V/V on 500uOhm gives a range of +/- 75A
         local_regs->Ctrl_Reg_2.GAIN = DRV8301_ShuntAmpGain_40VpV;
 
+        switch (local_regs->Ctrl_Reg_2.GAIN) {
+            case DRV8301_ShuntAmpGain_10VpV:
+                motor->phase_current_rev_gain = 1.0f/10.0f;
+                break;
+            case DRV8301_ShuntAmpGain_20VpV:
+                motor->phase_current_rev_gain = 1.0f/20.0f;
+                break;
+            case DRV8301_ShuntAmpGain_40VpV:
+                motor->phase_current_rev_gain = 1.0f/40.0f;
+                break;
+            case DRV8301_ShuntAmpGain_80VpV:
+                motor->phase_current_rev_gain = 1.0f/80.0f;
+                break;
+            // default:
+            //     rev_gain = 0.0f; //to stop warning
+            //     motors[motornum].error = ERROR_GATEDRIVER_INVALID_GAIN;
+            //     return -1;
+        }
+
         local_regs->SndCmd = true;
-        DRV8301_writeData(&motor->gate_driver, local_regs);
+        DRV8301_writeData(gate_driver, local_regs);
         local_regs->RcvCmd = true;
-        DRV8301_readData(&motor->gate_driver, local_regs);
-    }
+        DRV8301_readData(gate_driver, local_regs);
 }
 
 static void start_adc_pwm(){
@@ -581,33 +601,11 @@ static void sync_timers(TIM_HandleTypeDef* htim_a, TIM_HandleTypeDef* htim_b,
     htim_b->Instance->BDTR |= MOE_store_b;
 }
 
-static float phase_current_from_adcval(uint32_t ADCValue, int motornum) {
-    float rev_gain;
-    //@TODO we can shave off some clock cycles by writing a static rev_gain in the motor struct
-    //when we set the gains
-    switch (gate_driver_regs[motornum].Ctrl_Reg_2.GAIN) {
-        case DRV8301_ShuntAmpGain_10VpV:
-            rev_gain = 1.0f/10.0f;
-            break;
-        case DRV8301_ShuntAmpGain_20VpV:
-            rev_gain = 1.0f/20.0f;
-            break;
-        case DRV8301_ShuntAmpGain_40VpV:
-            rev_gain = 1.0f/40.0f;
-            break;
-        case DRV8301_ShuntAmpGain_80VpV:
-            rev_gain = 1.0f/80.0f;
-            break;
-        default:
-            rev_gain = 0.0f; //to stop warning
-            motors[motornum].error = ERROR_GATEDRIVER_INVALID_GAIN;
-            return -1;
-    }
-
+static float phase_current_from_adcval(Motor_t* motor, uint32_t ADCValue) {
     int adcval_bal = (int)ADCValue - (1<<11);
     float amp_out_volt = (3.3f/(float)(1<<12)) * (float)adcval_bal;
-    float shunt_volt = amp_out_volt * rev_gain;
-    float current = shunt_volt * motors[motornum].shunt_conductance;
+    float shunt_volt = amp_out_volt * motor->phase_current_rev_gain;
+    float current = shunt_volt * motor->shunt_conductance;
     return current;
 }
 
@@ -722,12 +720,7 @@ void pwm_trig_adc_cb(ADC_HandleTypeDef* hadc) {
     } else {
         ADCValue = HAL_ADCEx_InjectedGetValue(hadc, ADC_INJECTED_RANK_1);
     }
-    float current = phase_current_from_adcval(ADCValue, motor_nr);
-    if(current == -1){
-        motors[motor_nr].enable_control = false;
-        motors[motor_nr].calibration_ok = false;
-        return;
-    }
+    float current = phase_current_from_adcval(motor, ADCValue);
 
     if (current_meas_not_DC_CAL) {
         // ADC2 and ADC3 record the phB and phC currents concurrently,

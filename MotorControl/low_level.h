@@ -94,7 +94,9 @@ typedef struct {
     Iph_BC_t current_meas;
     Iph_BC_t DC_calib;
     DRV8301_Obj gate_driver;
+    DRV_SPI_8301_Vars_t gate_driver_regs; //Local view of DRV registers
     float shunt_conductance;
+    float phase_current_rev_gain; //Reverse gain for ADC to Amps
     Current_control_t current_control;
     Rotor_t rotor;
     int timing_log_index;
