@@ -265,24 +265,45 @@ bool * exposed_bools [] = {
 
 
 /* Private function prototypes -----------------------------------------------*/
+// Command Handling
+static void print_monitoring(int limit);
+// Utility
+static uint16_t check_timing(Motor_t* motor);
+static void global_fault(int error);
+static float phase_current_from_adcval(Motor_t* motor, uint32_t ADCValue);
+// Initalisation
 static void DRV8301_setup(Motor_t* motor);
 static void start_adc_pwm();
 static void start_pwm(TIM_HandleTypeDef* htim);
 static void sync_timers(TIM_HandleTypeDef* htim_a, TIM_HandleTypeDef* htim_b,
         uint16_t TIM_CLOCKSOURCE_ITRx, uint16_t count_offset);
-static float phase_current_from_adcval(Motor_t* motor, uint32_t ADCValue);
-static uint16_t check_timing(Motor_t* motor);
-static void update_brake_current(float brake_current);
-static void queue_voltage_timings(Motor_t* motor, float v_alpha, float v_beta);
+// IRQ Callbacks (are all public)
+// Measurement and calibrationa
 static bool measure_phase_resistance(Motor_t* motor, float test_current, float max_voltage);
 static bool measure_phase_inductance(Motor_t* motor, float voltage_low, float voltage_high);
 static bool calib_enc_offset(Motor_t* motor, float voltage_magnitude);
+static bool motor_calibration(Motor_t* motor);
+// Test functions
+static void scan_motor_loop(Motor_t* motor, float omega, float voltage_magnitude);
+static void FOC_voltage_loop(Motor_t* motor, float v_d, float v_q);
+// Main motor control
+static void update_rotor(Rotor_t* rotor);
+static void update_brake_current(float brake_current);
+static void queue_modulation_timings(Motor_t* motor, float mod_alpha, float mod_beta);
+static void queue_voltage_timings(Motor_t* motor, float v_alpha, float v_beta);
+static bool FOC_current(Motor_t* motor, float Id_des, float Iq_des);
 static void control_motor_loop(Motor_t* motor);
+// Motor thread (is public)
 
 
 /* Function implementations --------------------------------------------------*/
 
-void print_monitoring(int limit){
+//--------------------------------
+// Command Handling
+// TODO move to different file
+//--------------------------------
+
+static void print_monitoring(int limit){
     for(int i=0;i<limit;i++){
         switch(monitoring_slots[i].type){
         case 0:
@@ -424,6 +445,56 @@ void motor_parse_cmd(uint8_t* buffer, int len) {
     }
 }
 
+
+//--------------------------------
+// Utility
+//--------------------------------
+
+static uint16_t check_timing(Motor_t* motor) {
+    TIM_HandleTypeDef* htim = motor->motor_timer;
+    uint16_t timing = htim->Instance->CNT;
+    bool down = htim->Instance->CR1 & TIM_CR1_DIR;
+    if (down) {
+        uint16_t delta = TIM_1_8_PERIOD_CLOCKS - timing;
+        timing = TIM_1_8_PERIOD_CLOCKS + delta;
+    }
+
+    if(++(motor->timing_log_index) == TIMING_LOG_SIZE){
+        motor->timing_log_index = 0;
+    }
+    motor->timing_log[motor->timing_log_index] = timing;
+
+    return timing;
+}
+
+static void global_fault(int error){
+    //Disable motors NOW!
+    for (int i = 0; i < num_motors; ++i) {
+        __HAL_TIM_MOE_DISABLE_UNCONDITIONALLY(motors[i].motor_timer);
+    }
+    //Set fault codes, etc.
+    for (int i = 0; i < num_motors; ++i) {
+        motors[i].error = error;
+        motors[i].enable_control = false;
+        motors[i].calibration_ok = false;
+    }
+    //disable brake resistor
+    update_brake_current(0.0f);
+}
+
+static float phase_current_from_adcval(Motor_t* motor, uint32_t ADCValue) {
+    int adcval_bal = (int)ADCValue - (1<<11);
+    float amp_out_volt = (3.3f/(float)(1<<12)) * (float)adcval_bal;
+    float shunt_volt = amp_out_volt * motor->phase_current_rev_gain;
+    float current = shunt_volt * motor->shunt_conductance;
+    return current;
+}
+
+
+//--------------------------------
+// Initalisation
+//--------------------------------
+
 // Initalises the low level motor control and then starts the motor control threads
 void init_motor_control() {
     //Init gate drivers
@@ -440,25 +511,6 @@ void init_motor_control() {
     //Wait for current sense calibration to converge
     //@TODO make timing a function of calibration filter tau
     osDelay(1500);
-}
-
-
-static void global_fault(int error){
-
-    //Disable motors NOW!
-    for (int i = 0; i < num_motors; ++i) {
-        __HAL_TIM_MOE_DISABLE_UNCONDITIONALLY(motors[i].motor_timer);
-    }
-
-    //Set fault codes, etc.
-    for (int i = 0; i < num_motors; ++i) {
-        motors[i].error = error;
-        motors[i].enable_control = false;
-        motors[i].calibration_ok = false;
-    }
-
-    //disable brake resistor
-    update_brake_current(0.0f);
 }
 
 // Set up the gate drivers
@@ -601,13 +653,10 @@ static void sync_timers(TIM_HandleTypeDef* htim_a, TIM_HandleTypeDef* htim_b,
     htim_b->Instance->BDTR |= MOE_store_b;
 }
 
-static float phase_current_from_adcval(Motor_t* motor, uint32_t ADCValue) {
-    int adcval_bal = (int)ADCValue - (1<<11);
-    float amp_out_volt = (3.3f/(float)(1<<12)) * (float)adcval_bal;
-    float shunt_volt = amp_out_volt * motor->phase_current_rev_gain;
-    float current = shunt_volt * motor->shunt_conductance;
-    return current;
-}
+
+//--------------------------------
+// IRQ Callbacks
+//--------------------------------
 
 void vbus_sense_adc_cb(ADC_HandleTypeDef* hadc) {
     static const float voltage_scale = 3.3 * 11.0f / (float)(1<<12);
@@ -749,82 +798,10 @@ void pwm_trig_adc_cb(ADC_HandleTypeDef* hadc) {
     }
 }
 
-static uint16_t check_timing(Motor_t* motor) {
-    TIM_HandleTypeDef* htim = motor->motor_timer;
-    uint16_t timing = htim->Instance->CNT;
-    bool down = htim->Instance->CR1 & TIM_CR1_DIR;
-    if (down) {
-        uint16_t delta = TIM_1_8_PERIOD_CLOCKS - timing;
-        timing = TIM_1_8_PERIOD_CLOCKS + delta;
-    }
-
-    if(++(motor->timing_log_index) == TIMING_LOG_SIZE){
-        motor->timing_log_index = 0;
-    }
-    motor->timing_log[motor->timing_log_index] = timing;
-
-    return timing;
-}
-
-static void update_rotor(Rotor_t* rotor) {
-    //update internal encoder state
-    int16_t delta_enc = (int16_t)rotor->encoder_timer->Instance->CNT - (int16_t)rotor->encoder_state;
-    rotor->encoder_state += (int32_t)delta_enc;
-
-    //compute electrical phase
-    float ph = elec_rad_per_enc * ((rotor->encoder_state % ENCODER_CPR) - rotor->encoder_offset);
-    ph = fmodf(ph, 2*M_PI);
-    rotor->phase = ph;
-
-    //run pll (for now pll is in units of encoder counts)
-    //@TODO pll_pos runs out of precision very quickly here! Perhaps decompose into integer and fractional part?
-    // Predict current pos
-    rotor->pll_pos += CURRENT_MEAS_PERIOD * rotor->pll_vel;
-    // discrete phase detector
-    float delta_pos = (float)(rotor->encoder_state - (int32_t)floorf(rotor->pll_pos));
-    // pll feedback
-    rotor->pll_pos += CURRENT_MEAS_PERIOD * rotor->pll_kp * delta_pos;
-    rotor->pll_vel += CURRENT_MEAS_PERIOD * rotor->pll_ki * delta_pos;
-}
-
-static void update_brake_current(float brake_current) {
-    if (brake_current < 0.0f) brake_current = 0.0f;
-    float brake_duty = brake_current * brake_resistance / vbus_voltage;
-
-    // Duty limit at 90% to allow bootstrap caps to charge
-    if (brake_duty > 0.9f) brake_duty = 0.9f;
-    int high_on = TIM_APB1_PERIOD_CLOCKS * (1.0f - brake_duty);
-    int low_off = high_on - TIM_APB1_DEADTIME_CLOCKS;
-    if (low_off < 0) low_off = 0;
-
-    // Safe update of low and high side timings
-    // To avoid race condition, first reset timings to safe state
-    // ch3 is low side, ch4 is high side
-    htim2.Instance->CCR3 = 0;
-    htim2.Instance->CCR4 = TIM_APB1_PERIOD_CLOCKS+1;
-    htim2.Instance->CCR3 = low_off;
-    htim2.Instance->CCR4 = high_on;
-}
 
 //--------------------------------
 // Measurement and calibration
 //--------------------------------
-
-
-static void queue_modulation_timings(Motor_t* motor, float mod_alpha, float mod_beta) {
-    float tA, tB, tC;
-    SVM(mod_alpha, mod_beta, &tA, &tB, &tC);
-    motor->next_timings[0] = (uint16_t)(tA * (float)TIM_1_8_PERIOD_CLOCKS);
-    motor->next_timings[1] = (uint16_t)(tB * (float)TIM_1_8_PERIOD_CLOCKS);
-    motor->next_timings[2] = (uint16_t)(tC * (float)TIM_1_8_PERIOD_CLOCKS);
-}
-
-static void queue_voltage_timings(Motor_t* motor, float v_alpha, float v_beta) {
-    float vfactor = 1.0f / ((2.0f / 3.0f) * vbus_voltage);
-    float mod_alpha = vfactor * v_alpha;
-    float mod_beta = vfactor * v_beta;
-    queue_modulation_timings(motor, mod_alpha, mod_beta);
-}
 
 //@TODO measure all phases
 static bool measure_phase_resistance(Motor_t* motor, float test_current, float max_voltage) {
@@ -1005,6 +982,7 @@ static bool motor_calibration(Motor_t* motor){
 //--------------------------------
 // Test functions
 //--------------------------------
+
 static void scan_motor_loop(Motor_t* motor, float omega, float voltage_magnitude) {
     for(;;) {
         for (float ph = 0.0f; ph < 2.0f * M_PI; ph += omega * CURRENT_MEAS_PERIOD) {
@@ -1045,6 +1023,62 @@ static void FOC_voltage_loop(Motor_t* motor, float v_d, float v_q) {
 //--------------------------------
 // Main motor control
 //--------------------------------
+
+static void update_rotor(Rotor_t* rotor) {
+    //update internal encoder state
+    int16_t delta_enc = (int16_t)rotor->encoder_timer->Instance->CNT - (int16_t)rotor->encoder_state;
+    rotor->encoder_state += (int32_t)delta_enc;
+
+    //compute electrical phase
+    float ph = elec_rad_per_enc * ((rotor->encoder_state % ENCODER_CPR) - rotor->encoder_offset);
+    ph = fmodf(ph, 2*M_PI);
+    rotor->phase = ph;
+
+    //run pll (for now pll is in units of encoder counts)
+    //@TODO pll_pos runs out of precision very quickly here! Perhaps decompose into integer and fractional part?
+    // Predict current pos
+    rotor->pll_pos += CURRENT_MEAS_PERIOD * rotor->pll_vel;
+    // discrete phase detector
+    float delta_pos = (float)(rotor->encoder_state - (int32_t)floorf(rotor->pll_pos));
+    // pll feedback
+    rotor->pll_pos += CURRENT_MEAS_PERIOD * rotor->pll_kp * delta_pos;
+    rotor->pll_vel += CURRENT_MEAS_PERIOD * rotor->pll_ki * delta_pos;
+}
+
+static void update_brake_current(float brake_current) {
+    if (brake_current < 0.0f) brake_current = 0.0f;
+    float brake_duty = brake_current * brake_resistance / vbus_voltage;
+
+    // Duty limit at 90% to allow bootstrap caps to charge
+    if (brake_duty > 0.9f) brake_duty = 0.9f;
+    int high_on = TIM_APB1_PERIOD_CLOCKS * (1.0f - brake_duty);
+    int low_off = high_on - TIM_APB1_DEADTIME_CLOCKS;
+    if (low_off < 0) low_off = 0;
+
+    // Safe update of low and high side timings
+    // To avoid race condition, first reset timings to safe state
+    // ch3 is low side, ch4 is high side
+    htim2.Instance->CCR3 = 0;
+    htim2.Instance->CCR4 = TIM_APB1_PERIOD_CLOCKS+1;
+    htim2.Instance->CCR3 = low_off;
+    htim2.Instance->CCR4 = high_on;
+}
+
+static void queue_modulation_timings(Motor_t* motor, float mod_alpha, float mod_beta) {
+    float tA, tB, tC;
+    SVM(mod_alpha, mod_beta, &tA, &tB, &tC);
+    motor->next_timings[0] = (uint16_t)(tA * (float)TIM_1_8_PERIOD_CLOCKS);
+    motor->next_timings[1] = (uint16_t)(tB * (float)TIM_1_8_PERIOD_CLOCKS);
+    motor->next_timings[2] = (uint16_t)(tC * (float)TIM_1_8_PERIOD_CLOCKS);
+}
+
+static void queue_voltage_timings(Motor_t* motor, float v_alpha, float v_beta) {
+    float vfactor = 1.0f / ((2.0f / 3.0f) * vbus_voltage);
+    float mod_alpha = vfactor * v_alpha;
+    float mod_beta = vfactor * v_beta;
+    queue_modulation_timings(motor, mod_alpha, mod_beta);
+}
+
 static bool FOC_current(Motor_t* motor, float Id_des, float Iq_des) {
     Current_control_t* ictrl = &motor->current_control;
 
@@ -1184,6 +1218,7 @@ static void control_motor_loop(Motor_t* motor) {
 //--------------------------------
 // Motor thread
 //--------------------------------
+
 void motor_thread(void const * argument) {
     Motor_t* motor = (Motor_t*)argument;
     motor->motor_thread = osThreadGetId();
