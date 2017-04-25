@@ -7,7 +7,7 @@
 #include "drv8301.h"
 
 //default timeout waiting for phase measurement signals
-#define SIGNAL_TIMEOUT 5 // [ms] 
+#define PH_CURRENT_MEAS_TIMEOUT 5 // [ms]
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum {

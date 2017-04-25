@@ -35,12 +35,12 @@
 //Arbitrary non-zero inital value to avoid division by zero if ADC reading is late
 float vbus_voltage = 12.0f;
 
-//@TODO stick parameter into struct
+//TODO stick parameter into struct
 #define ENCODER_CPR (600*4)
 static float elec_rad_per_enc = 7.0 * 2 * M_PI * (1.0f / (float)ENCODER_CPR);
 
-//@TODO: Migrate to C++, clearly we are actually doing object oriented code here...
-//@TODO: For nice encapsulation, consider not having the motor objects public
+//TODO: Migrate to C++, clearly we are actually doing object oriented code here...
+//TODO: For nice encapsulation, consider not having the motor objects public
 Motor_t motors[] = {
     {   //M0
         .control_mode = CTRL_MODE_CURRENT_CONTROL,
@@ -351,7 +351,7 @@ void set_current_setpoint(Motor_t* motor, float current_setpoint) {
 
 void motor_parse_cmd(uint8_t* buffer, int len) {
 
-    //@TODO very hacky way of terminating sscanf at end of buffer:
+    //TODO very hacky way of terminating sscanf at end of buffer:
     //We should do some proper struct packing instead of using sscanf altogether
     buffer[len] = 0;
 
@@ -509,7 +509,7 @@ void init_motor_control() {
     HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL);
 
     //Wait for current sense calibration to converge
-    //@TODO make timing a function of calibration filter tau
+    //TODO make timing a function of calibration filter tau
     osDelay(1500);
 }
 
@@ -521,7 +521,7 @@ static void DRV8301_setup(Motor_t* motor) {
         DRV8301_enable(gate_driver);
         DRV8301_setupSpi(gate_driver, local_regs);
 
-        //@TODO we can use reporting only if we actually wire up the nOCTW pin
+        //TODO we can use reporting only if we actually wire up the nOCTW pin
         local_regs->Ctrl_Reg_1.OC_MODE = DRV8301_OcMode_LatchShutDown;
         //Overcurrent set to approximately 150A at 100degC. This may need tweaking.
         local_regs->Ctrl_Reg_1.OC_ADJ_SET = DRV8301_VdsLevel_0p730_V;
@@ -542,10 +542,6 @@ static void DRV8301_setup(Motor_t* motor) {
             case DRV8301_ShuntAmpGain_80VpV:
                 motor->phase_current_rev_gain = 1.0f/80.0f;
                 break;
-            // default:
-            //     rev_gain = 0.0f; //to stop warning
-            //     motors[motornum].error = ERROR_GATEDRIVER_INVALID_GAIN;
-            //     return -1;
         }
 
         local_regs->SndCmd = true;
@@ -666,7 +662,7 @@ void vbus_sense_adc_cb(ADC_HandleTypeDef* hadc) {
 }
 
 // This is the callback from the ADC that we expect after the PWM has triggered an ADC conversion.
-//@TODO: Document how the phasing is done, link to timing diagram
+//TODO: Document how the phasing is done, link to timing diagram
 void pwm_trig_adc_cb(ADC_HandleTypeDef* hadc) {
     #define calib_tau 0.2f //@TOTO make more easily configurable
     static const float calib_filter_k = CURRENT_MEAS_PERIOD / calib_tau;
@@ -803,14 +799,14 @@ void pwm_trig_adc_cb(ADC_HandleTypeDef* hadc) {
 // Measurement and calibration
 //--------------------------------
 
-//@TODO measure all phases
+//TODO measure all phases
 static bool measure_phase_resistance(Motor_t* motor, float test_current, float max_voltage) {
     static const float kI = 10.0f; //[(V/s)/A]
-    static const int num_test_cycles = 3.0f / CURRENT_MEAS_PERIOD;
+    static const int num_test_cycles = 3.0f / CURRENT_MEAS_PERIOD; //Test runs for 3s
     float test_voltage = 0.0f;
     for (int i = 0; i < num_test_cycles; ++i) {
-        osEvent evt = osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, SIGNAL_TIMEOUT);
-        if( evt.status != osEventSignal){
+        osEvent evt = osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, PH_CURRENT_MEAS_TIMEOUT);
+        if (evt.status != osEventSignal){
             motor->error = ERROR_PHASE_RESISTANCE_MEASUREMENT_TIMEOUT;
             return false;
         }
@@ -823,7 +819,7 @@ static bool measure_phase_resistance(Motor_t* motor, float test_current, float m
         queue_voltage_timings(motor, test_voltage, 0.0f);
 
         //Check we meet deadlines after queueing
-        if(! (check_timing(motor) < motor->control_deadline)){
+        if (!(check_timing(motor) < motor->control_deadline)){
             motor->error = ERROR_PHASE_RESISTANCE_TIMING;
             return false;
         }
@@ -833,21 +829,21 @@ static bool measure_phase_resistance(Motor_t* motor, float test_current, float m
     queue_voltage_timings(motor, 0.0f, 0.0f);
 
     motor->phase_resistance = test_voltage / test_current;
-    if(motor->phase_resistance < 0.01 || motor->phase_resistance > 0.2){
+    if (motor->phase_resistance < 0.01 || motor->phase_resistance > 0.2) {
         motor->error = ERROR_PHASE_RESISTANCE_OUT_OF_RANGE;
         return false;
     }
     return true;
 }
 
-//@TODO measure all phases
+//TODO measure all phases
 static bool measure_phase_inductance(Motor_t* motor, float voltage_low, float voltage_high) {
     float test_voltages[2] = {voltage_low, voltage_high};
     float Ialphas[2] = {0.0f};
     static const int num_cycles = 5000;
     for (int t = 0; t < num_cycles; ++t) {
         for (int i = 0; i < 2; ++i) {
-            if( osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, SIGNAL_TIMEOUT).status != osEventSignal){
+            if (osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, PH_CURRENT_MEAS_TIMEOUT).status != osEventSignal) {
                 motor->error = ERROR_PHASE_INDUCTANCE_MEASUREMENT_TIMEOUT;
                 return false;
             }
@@ -857,7 +853,7 @@ static bool measure_phase_inductance(Motor_t* motor, float voltage_low, float vo
             queue_voltage_timings(motor, test_voltages[i], 0.0f);
 
             //Check we meet deadlines after queueing
-            if(! (check_timing(motor) < motor->control_deadline)){
+            if (!(check_timing(motor) < motor->control_deadline)) {
                 motor->error = ERROR_PHASE_INDUCTANCE_TIMING;
                 return false;
             }
@@ -873,8 +869,8 @@ static bool measure_phase_inductance(Motor_t* motor, float voltage_low, float vo
     float dI_by_dt = (Ialphas[1] - Ialphas[0]) / (CURRENT_MEAS_PERIOD * (float)num_cycles);
     motor->phase_inductance = v_L / dI_by_dt;
     
-    //@TODO add real world values
-    if(motor->phase_inductance < 0 || motor->phase_inductance > 23){
+    //TODO arbitrary values set for now
+    if (motor->phase_inductance < 1e-6 || motor->phase_inductance > 500e-6) {
         motor->error = ERROR_PHASE_INDUCTANCE_OUT_OF_RANGE;
         return false;
     }
@@ -893,9 +889,9 @@ static bool calib_enc_offset(Motor_t* motor, float voltage_magnitude) {
 
     int32_t encvaluesum = 0;
 
-    //go to rotor zero phase for 2s to get ready to scan
+    //go to rotor zero phase for start_lock_duration to get ready to scan
     for (int i = 0; i < start_lock_duration*CURRENT_MEAS_HZ; ++i) {
-        if(osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, SIGNAL_TIMEOUT).status != osEventSignal){
+        if (osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, PH_CURRENT_MEAS_TIMEOUT).status != osEventSignal) {
             motor->error = ERROR_ENCODER_MEASUREMENT_TIMEOUT;
             return false;
         }
@@ -904,7 +900,7 @@ static bool calib_enc_offset(Motor_t* motor, float voltage_magnitude) {
     //scan forwards
     for (float ph = -scan_range / 2.0f; ph < scan_range / 2.0f; ph += step_size) {
         for (int i = 0; i < dt_step*(float)CURRENT_MEAS_HZ; ++i) {
-            if(osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, SIGNAL_TIMEOUT).status != osEventSignal){
+            if (osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, PH_CURRENT_MEAS_TIMEOUT).status != osEventSignal) {
                 motor->error = ERROR_ENCODER_MEASUREMENT_TIMEOUT;
                 return false;
             }
@@ -912,20 +908,18 @@ static bool calib_enc_offset(Motor_t* motor, float voltage_magnitude) {
             float v_beta  = voltage_magnitude * arm_sin_f32(ph);
             queue_voltage_timings(motor, v_alpha, v_beta);
         }
-        //TODO actual unit conversion
         encvaluesum += (int16_t)motor->rotor.encoder_timer->Instance->CNT;
     }
-
     //check direction
     //TODO ability to handle both encoder directions
-    if(!((int16_t)motor->rotor.encoder_timer->Instance->CNT > 0)){
+    if (!((int16_t)motor->rotor.encoder_timer->Instance->CNT > 0)) {
         motor->error = ERROR_ENCODER_DIRECTION;
         return false;
     }
     //scan backwards
     for (float ph = scan_range / 2.0f; ph > -scan_range / 2.0f; ph -= step_size) {
         for (int i = 0; i < dt_step*(float)CURRENT_MEAS_HZ; ++i) {
-            if (osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, SIGNAL_TIMEOUT).status != osEventSignal){
+            if (osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, PH_CURRENT_MEAS_TIMEOUT).status != osEventSignal) {
                 motor->error = ERROR_ENCODER_MEASUREMENT_TIMEOUT;
                 return false;
             }
@@ -933,7 +927,6 @@ static bool calib_enc_offset(Motor_t* motor, float voltage_magnitude) {
             float v_beta  = voltage_magnitude * arm_sin_f32(ph);
             queue_voltage_timings(motor, v_alpha, v_beta);
         }
-        //TODO actual unit conversion
         encvaluesum += (int16_t)motor->rotor.encoder_timer->Instance->CNT;
     }
 
@@ -946,16 +939,12 @@ static bool motor_calibration(Motor_t* motor){
     motor->calibration_ok = false;
     motor->error = ERROR_NO_ERROR;
     
-    if(! measure_phase_resistance(motor, motor->calibration_current, 1.0f)){
+    if (!measure_phase_resistance(motor, motor->calibration_current, 1.0f))
         return false;
-    }
-    if(! measure_phase_inductance(motor, -1.0f, 1.0f)){
+    if (!measure_phase_inductance(motor, -1.0f, 1.0f))
         return false;
-    }
-    
-    if(! calib_enc_offset(motor, motor->calibration_current * motor->phase_resistance)){
+    if (!calib_enc_offset(motor, motor->calibration_current * motor->phase_resistance))
         return false;
-    }
     
     //Calculate current control gains
     float current_control_bandwidth = 2000.0f; // [rad/s]
@@ -967,7 +956,7 @@ static bool motor_calibration(Motor_t* motor){
     float rotor_pll_bandwidth = 1000.0f; // [rad/s]
     motor->rotor.pll_kp = 2.0f * rotor_pll_bandwidth;
     //Check that we don't get problems with discrete time approximation
-    if(!(CURRENT_MEAS_PERIOD * motor->rotor.pll_kp < 1.0f)){
+    if (!(CURRENT_MEAS_PERIOD * motor->rotor.pll_kp < 1.0f)){
         motor->error = ERROR_CALIBRATION_TIMING;
         return false;
     }
@@ -984,7 +973,7 @@ static bool motor_calibration(Motor_t* motor){
 //--------------------------------
 
 static void scan_motor_loop(Motor_t* motor, float omega, float voltage_magnitude) {
-    for(;;) {
+    for (;;) {
         for (float ph = 0.0f; ph < 2.0f * M_PI; ph += omega * CURRENT_MEAS_PERIOD) {
             osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, osWaitForever);
             float v_alpha = voltage_magnitude * arm_cos_f32(ph);
@@ -1012,7 +1001,7 @@ static void FOC_voltage_loop(Motor_t* motor, float v_d, float v_q) {
         queue_voltage_timings(motor, v_alpha, v_beta);
 
         //Check we meet deadlines after queueing
-        if(!(check_timing(motor) < motor->control_deadline)){
+        if (!(check_timing(motor) < motor->control_deadline)) {
             motor->error = ERROR_FOC_VOLTAGE_TIMING;
             return;
         }
@@ -1035,7 +1024,7 @@ static void update_rotor(Rotor_t* rotor) {
     rotor->phase = ph;
 
     //run pll (for now pll is in units of encoder counts)
-    //@TODO pll_pos runs out of precision very quickly here! Perhaps decompose into integer and fractional part?
+    //TODO pll_pos runs out of precision very quickly here! Perhaps decompose into integer and fractional part?
     // Predict current pos
     rotor->pll_pos += CURRENT_MEAS_PERIOD * rotor->pll_vel;
     // discrete phase detector
@@ -1096,7 +1085,7 @@ static bool FOC_current(Motor_t* motor, float Id_des, float Iq_des) {
     float Ierr_d = Id_des - Id;
     float Ierr_q = Iq_des - Iq;
 
-    //@TODO look into feed forward terms (esp omega, since PI pole maps to RL tau)
+    //TODO look into feed forward terms (esp omega, since PI pole maps to RL tau)
     //Apply PI control
     float Vd = ictrl->v_current_control_integral_d + Ierr_d * ictrl->p_gain;
     float Vq = ictrl->v_current_control_integral_q + Ierr_q * ictrl->p_gain;
@@ -1106,13 +1095,13 @@ static bool FOC_current(Motor_t* motor, float Id_des, float Iq_des) {
     float mod_q = vfactor * Vq;
 
     //Vector modulation saturation, lock integrator if saturated
-    //@TODO make maximum modulation configurable (currently 40%)
+    //TODO make maximum modulation configurable (currently 40%)
     float mod_scalefactor = 0.20f * sqrt3_by_2 * 1.0f/sqrtf(mod_d*mod_d + mod_q*mod_q);
     if (mod_scalefactor < 1.0f)
     {
         mod_d *= mod_scalefactor;
         mod_q *= mod_scalefactor;
-        //@TODO make decayfactor configurable
+        //TODO make decayfactor configurable
         ictrl->v_current_control_integral_d *= 0.99f;
         ictrl->v_current_control_integral_q *= 0.99f;
     } else {
@@ -1126,7 +1115,7 @@ static bool FOC_current(Motor_t* motor, float Id_des, float Iq_des) {
     // If this is last motor, update brake resistor duty
     // if (motor == &motors[num_motors-1]) {
     //Above check doesn't work if last motor is executing voltage control
-    //@TODO trigger this update in control_motor_loop instead,
+    //TODO trigger this update in control_motor_loop instead,
     // and make voltage control a control mode in it.
         float Ibus_sum = 0.0f;
         for (int i = 0; i < num_motors; ++i) {
@@ -1153,14 +1142,14 @@ static bool FOC_current(Motor_t* motor, float Id_des, float Iq_des) {
 
 static void control_motor_loop(Motor_t* motor) {
     while (motor->enable_control) {
-        if(osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, SIGNAL_TIMEOUT).status != osEventSignal){
+        if(osSignalWait(M_SIGNAL_PH_CURRENT_MEAS, PH_CURRENT_MEAS_TIMEOUT).status != osEventSignal){
             motor->error = ERROR_FOC_MEASUREMENT_TIMEOUT;
             break;
         }
         update_rotor(&motor->rotor);
 
         //Position control
-        //@TODO Decide if we want to use encoder or pll position here
+        //TODO Decide if we want to use encoder or pll position here
         float vel_des = motor->vel_setpoint;
         if (motor->control_mode >= CTRL_MODE_POSITION_CONTROL) {
             float pos_err = motor->pos_setpoint - motor->rotor.pll_pos;
@@ -1200,7 +1189,7 @@ static void control_motor_loop(Motor_t* motor) {
             motor->vel_integrator_current = 0.0f;
         } else {
             if (limited) {
-                //@TODO make decayfactor configurable
+                //TODO make decayfactor configurable
                 motor->vel_integrator_current *= 0.99f;
             } else {
                 motor->vel_integrator_current += (motor->vel_integrator_gain * CURRENT_MEAS_PERIOD) * v_err;
