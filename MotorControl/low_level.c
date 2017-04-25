@@ -576,6 +576,10 @@ static void start_adc_pwm(){
     //TODO: explain why this offset
     sync_timers(&htim1, &htim8, TIM_CLOCKSOURCE_ITR0, TIM_1_8_PERIOD_CLOCKS/2 - 1*128);
 
+    // Motor output starts in the disabled state
+    __HAL_TIM_MOE_DISABLE_UNCONDITIONALLY(&htim1);
+    __HAL_TIM_MOE_DISABLE_UNCONDITIONALLY(&htim8);
+
     // Start brake resistor PWM in floating output configuration
     htim2.Instance->CCR3 = 0;
     htim2.Instance->CCR4 = TIM_APB1_PERIOD_CLOCKS+1;
@@ -1212,9 +1216,6 @@ void motor_thread(void const * argument) {
     Motor_t* motor = (Motor_t*)argument;
     motor->motor_thread = osThreadGetId();
     motor->thread_ready = true;
-
-    // oskar you have to take a look at this, i dont know enough about the timer how/why..
-    __HAL_TIM_MOE_DISABLE_UNCONDITIONALLY(motor->motor_timer); // TODO this does not belong here, add to board startup code
 
 #ifdef STANDALONE_MODE
     motor->do_calibration = true;
