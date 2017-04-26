@@ -14,20 +14,20 @@
 4) To change the default 127.0.0.1:12342 websocket, use "ODrive.py /dev/yourserial 1.1.2.3:9999"
 
 ##### iPython shell and API: 
-1) Trigger selftest, selftest is required to enable motor control.
+1) Trigger calibration, calibration is required to enable motor control.
 
-<code>odrive.motors[0].set_do_selftest(True)</code>
+<code>odrive.motors[0].set_do_calibration(True)</code>
 
 
-2) Wait for selftest to finish
+2) Wait for calibration to finish
 
-<code>while(odrive.motors[0].get_do_selftest()):
+<code>while(odrive.motors[0].get_do_calibration()):
     time.sleep(1)
 </code>
 
-3) Check if selftest was successful
+3) Check if calibration was successful
 
-<code>odrive.motors[0].get_selftest_ok()</code>
+<code>odrive.motors[0].get_calibration_ok()</code>
 
 4) In case of error:
 
@@ -37,7 +37,7 @@
 
 <code>odrive.motors[0].set_control_mode(ControlMode.POSITION)</code>
  
-6) Enable Motor control, selftest must be successful to do this
+6) Enable Motor control, calibration must be successful to do this
 
 <code>odrive.motors[0].set_enable_control(True)</code>
 
