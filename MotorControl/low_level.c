@@ -183,83 +183,82 @@ float * exposed_floats [] = {
         &elec_rad_per_enc, // ro
         &motors[0].pos_setpoint, // rw
         &motors[0].pos_gain, // rw
-        &motors[0].vel_setpoint,// rw
-        &motors[0].vel_gain,// rw
-        &motors[0].vel_integrator_gain,// rw
-        &motors[0].vel_integrator_current,// rw
-        &motors[0].vel_limit,// rw
-        &motors[0].current_setpoint,// rw
+        &motors[0].vel_setpoint, // rw
+        &motors[0].vel_gain, // rw
+        &motors[0].vel_integrator_gain, // rw
+        &motors[0].vel_integrator_current, // rw
+        &motors[0].vel_limit, // rw
+        &motors[0].current_setpoint, // rw
         &motors[0].calibration_current, // rw
-        &motors[0].phase_inductance,// ro
-        &motors[0].phase_resistance,// ro
-        &motors[0].current_meas.phB,// ro
-        &motors[0].current_meas.phC,// ro
-        &motors[0].DC_calib.phB,// rw
-        &motors[0].DC_calib.phC,// rw
-        &motors[0].shunt_conductance,// rw
-        &motors[0].phase_current_rev_gain,// rw
-        &motors[0].current_control.current_lim,// rw
-        &motors[0].current_control.p_gain,// rw
-        &motors[0].current_control.i_gain,// rw
-        &motors[0].current_control.v_current_control_integral_d,// rw
-        &motors[0].current_control.v_current_control_integral_q,// rw
-        &motors[0].current_control.Ibus,// ro
-        &motors[0].rotor.phase ,// ro
-        &motors[0].rotor.pll_pos ,// rw
-        &motors[0].rotor.pll_vel ,// rw
-        &motors[0].rotor.pll_kp ,// rw
-        &motors[0].rotor.pll_ki ,// rw
+        &motors[0].phase_inductance, // ro
+        &motors[0].phase_resistance, // ro
+        &motors[0].current_meas.phB, // ro
+        &motors[0].current_meas.phC, // ro
+        &motors[0].DC_calib.phB, // rw
+        &motors[0].DC_calib.phC, // rw
+        &motors[0].shunt_conductance, // rw
+        &motors[0].phase_current_rev_gain, // rw
+        &motors[0].current_control.current_lim, // rw
+        &motors[0].current_control.p_gain, // rw
+        &motors[0].current_control.i_gain, // rw
+        &motors[0].current_control.v_current_control_integral_d, // rw
+        &motors[0].current_control.v_current_control_integral_q, // rw
+        &motors[0].current_control.Ibus, // ro
+        &motors[0].rotor.phase, // ro
+        &motors[0].rotor.pll_pos, // rw
+        &motors[0].rotor.pll_vel, // rw
+        &motors[0].rotor.pll_kp, // rw
+        &motors[0].rotor.pll_ki, // rw
         &motors[1].pos_setpoint, // rw
         &motors[1].pos_gain, // rw
-        &motors[1].vel_setpoint,// rw
-        &motors[1].vel_gain,// rw
-        &motors[1].vel_integrator_gain,// rw
-        &motors[1].vel_integrator_current,// rw
-        &motors[1].vel_limit,// rw
-        &motors[1].current_setpoint,// rw
+        &motors[1].vel_setpoint, // rw
+        &motors[1].vel_gain, // rw
+        &motors[1].vel_integrator_gain, // rw
+        &motors[1].vel_integrator_current, // rw
+        &motors[1].vel_limit, // rw
+        &motors[1].current_setpoint, // rw
         &motors[1].calibration_current, // rw
-        &motors[1].phase_inductance,// ro
-        &motors[1].phase_resistance,// ro
-        &motors[1].current_meas.phB,// ro
-        &motors[1].current_meas.phC,// ro
-        &motors[1].DC_calib.phB,// rw
-        &motors[1].DC_calib.phC,// rw
-        &motors[1].shunt_conductance,// rw
-        &motors[1].phase_current_rev_gain,// rw
-        &motors[1].current_control.current_lim,// rw
-        &motors[1].current_control.p_gain,// rw
-        &motors[1].current_control.i_gain,// rw
-        &motors[1].current_control.v_current_control_integral_d,// rw
-        &motors[1].current_control.v_current_control_integral_q,// rw
-        &motors[1].current_control.Ibus,// ro
-        &motors[1].rotor.phase ,// ro
-        &motors[1].rotor.pll_pos ,// rw
-        &motors[1].rotor.pll_vel ,// rw
-        &motors[1].rotor.pll_kp ,// rw
-        &motors[1].rotor.pll_ki ,// rw
-
+        &motors[1].phase_inductance, // ro
+        &motors[1].phase_resistance, // ro
+        &motors[1].current_meas.phB, // ro
+        &motors[1].current_meas.phC, // ro
+        &motors[1].DC_calib.phB, // rw
+        &motors[1].DC_calib.phC, // rw
+        &motors[1].shunt_conductance, // rw
+        &motors[1].phase_current_rev_gain, // rw
+        &motors[1].current_control.current_lim, // rw
+        &motors[1].current_control.p_gain, // rw
+        &motors[1].current_control.i_gain, // rw
+        &motors[1].current_control.v_current_control_integral_d, // rw
+        &motors[1].current_control.v_current_control_integral_q, // rw
+        &motors[1].current_control.Ibus, // ro
+        &motors[1].rotor.phase, // ro
+        &motors[1].rotor.pll_pos, // rw
+        &motors[1].rotor.pll_vel, // rw
+        &motors[1].rotor.pll_kp, // rw
+        &motors[1].rotor.pll_ki, // rw
 };
 
 int * exposed_ints [] = {
         (int*)&motors[0].control_mode, // rw
         &motors[0].rotor.encoder_offset, // rw
-        &motors[0].rotor.encoder_state,  // ro
-        &motors[0].error,                // rw
+        &motors[0].rotor.encoder_state, // ro
+        &motors[0].error, // rw
         (int*)&motors[1].control_mode, // rw
         &motors[1].rotor.encoder_offset, // rw
-        &motors[1].rotor.encoder_state,  // ro
-        &motors[1].error,                // rw
+        &motors[1].rotor.encoder_state, // ro
+        &motors[1].error, // rw
 };
 
 bool * exposed_bools [] = {
-        &motors[0].thread_ready,  // ro
-        &motors[0].enable_control,// rw
-        &motors[0].do_calibration,   // rw
-        &motors[0].calibration_ok,   // ro
-        &motors[1].thread_ready,  // ro
-        &motors[1].enable_control,// rw
-        &motors[1].do_calibration,   // rw
-        &motors[1].calibration_ok,   // ro
+        &motors[0].thread_ready, // ro
+        &motors[0].enable_control, // rw
+        &motors[0].do_calibration, // rw
+        &motors[0].calibration_ok, // ro
+        &motors[1].thread_ready, // ro
+        &motors[1].enable_control, // rw
+        &motors[1].do_calibration, // rw
+        &motors[1].calibration_ok, // ro
 };
 
 
