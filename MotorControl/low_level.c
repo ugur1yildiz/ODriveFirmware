@@ -171,10 +171,7 @@ static const float sqrt3_by_2 = 0.86602540378;
 static float brake_resistance = 2.0f; // [ohm]
 
 /* Monitoring */
-monitoring_slot monitoring_slots[] = {
-        { 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},
-        { 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0},{ 0 , 0}
-};
+monitoring_slot monitoring_slots[20] = {0};
 
 /* variables exposed to usb interface via set/get/monitor
  * If you change something here, don't forget to regenerate the python interface with generate_api.py
@@ -200,6 +197,7 @@ float * exposed_floats [] = {
         &motors[0].DC_calib.phB,// rw
         &motors[0].DC_calib.phC,// rw
         &motors[0].shunt_conductance,// rw
+        &motors[0].phase_current_rev_gain,// rw
         &motors[0].current_control.current_lim,// rw
         &motors[0].current_control.p_gain,// rw
         &motors[0].current_control.i_gain,// rw
@@ -227,6 +225,7 @@ float * exposed_floats [] = {
         &motors[1].DC_calib.phB,// rw
         &motors[1].DC_calib.phC,// rw
         &motors[1].shunt_conductance,// rw
+        &motors[1].phase_current_rev_gain,// rw
         &motors[1].current_control.current_lim,// rw
         &motors[1].current_control.p_gain,// rw
         &motors[1].current_control.i_gain,// rw
@@ -303,9 +302,9 @@ static void control_motor_loop(Motor_t* motor);
 // TODO move to different file
 //--------------------------------
 
-static void print_monitoring(int limit){
-    for(int i=0;i<limit;i++){
-        switch(monitoring_slots[i].type){
+static void print_monitoring(int limit) {
+    for (int i=0;i<limit;i++) {
+        switch (monitoring_slots[i].type) {
         case 0:
             printf("%f\t",*exposed_floats[monitoring_slots[i].index]);
             break;
@@ -387,56 +386,54 @@ void motor_parse_cmd(uint8_t* buffer, int len) {
         int numscan = sscanf((const char*)buffer, "g %u %u", &type, &index);
         if (numscan == 2) {
             switch(type){
-            case 0 :{
+            case 0: {
                 printf("%f\n",*exposed_floats[index]);
                 break;
             };
-            case 1 :{
+            case 1: {
                 printf("%u\n",*exposed_ints[index]);
                 break;
             };
-            case 2 :{
+            case 2: {
                 printf("%d\n",*exposed_bools[index]);
                 break;
             };
-        }
+            }
         }
     } else if (buffer[0] == 's') { // SET
         // s <0:float,1:int,2:bool> index value
         int type = 0;
         int index = 0;
-        int numscan = sscanf((const char*)buffer, "s %u %u", &type,&index);
+        int numscan = sscanf((const char*)buffer, "s %u %u", &type, &index);
         if (numscan == 2) {
-            switch(type){
-            case 0 :{
-                sscanf((const char*)buffer, "s %u %u %f", &type,&index,exposed_floats[index]);
+            switch(type) {
+            case 0: {
+                sscanf((const char*)buffer, "s %u %u %f", &type, &index, exposed_floats[index]);
                 break;
             };
-            case 1 :{
-                sscanf((const char*)buffer, "s %u %u %u", &type,&index,exposed_ints[index]);
+            case 1: {
+                sscanf((const char*)buffer, "s %u %u %u", &type, &index, exposed_ints[index]);
                 break;
             };
-            case 2 :{
+            case 2: {
                 int btmp = 0;
-                sscanf((const char*)buffer, "s %u %u %d", &type,&index,&btmp);
-                *exposed_bools[index] = btmp;
+                sscanf((const char*)buffer, "s %u %u %d", &type, &index, &btmp);
+                *exposed_bools[index] = btmp ? true : false;
                 break;
             };
             }
         }
-
-
-    } else if (buffer[0] == 'm') { // Monitor
-        // m <0:float,1:int,2:bool> index monitoringslot
+    } else if (buffer[0] == 'm') { // Setup Monitor
+        // m <0:float,1:int,2:bool> index monitoring_slot
         int type = 0;
         int index = 0;
         int slot = 0;
-        int numscan = sscanf((const char*)buffer, "m %u %u %u", &type,&index,&slot);
+        int numscan = sscanf((const char*)buffer, "m %u %u %u", &type, &index, &slot);
         if (numscan == 3) {
             monitoring_slots[slot].type = type;
             monitoring_slots[slot].index = index;
         }
-    } else if (buffer[0] == 'o') { // Output Monitoring
+    } else if (buffer[0] == 'o') { // Output Monitor
         int limit = 0;
         int numscan = sscanf((const char*)buffer, "o %u", &limit);
         if (numscan == 1) {
@@ -1222,8 +1219,8 @@ void motor_thread(void const * argument) {
     motor->enable_control = true;
 #endif
 
-    for(;;){
-        if(motor->do_calibration){
+    for (;;) {
+        if (motor->do_calibration) {
             __HAL_TIM_MOE_ENABLE(motor->motor_timer);// enable pwm outputs
             osDelay(10);
             motor_calibration(motor);
@@ -1233,7 +1230,7 @@ void motor_thread(void const * argument) {
             motor->do_calibration = false;
         }
         
-        if(motor->calibration_ok && motor->enable_control){
+        if (motor->calibration_ok && motor->enable_control) {
             __HAL_TIM_MOE_ENABLE(motor->motor_timer);
             osDelay(10);
             control_motor_loop(motor);
