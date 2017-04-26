@@ -4,7 +4,7 @@ import time
 import threading
 import json
 import random
-import Queue
+import queue
 from fractions import gcd
 from WebSocketServer import WebSocket, SimpleWebSocketServer
 
@@ -97,7 +97,7 @@ class WebsocketServer():
                 if data.keys()[0] == "monitor":
                     odrive._monitor(data["monitor"]["type"], data["monitor"]["nr"], data["monitor"]["frequency"])
 
-            except Exception, e:
+            except Exception as e:
                 print(e)
 
         def handleConnected(self):

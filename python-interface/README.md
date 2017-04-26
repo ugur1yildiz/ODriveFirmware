@@ -1,3 +1,6 @@
+#### Prerequisites:
+pyserial: <code>pip install pyserial</code>
+
 #### Usage:
 
 1) Generate python api from low_level.c
@@ -10,14 +13,12 @@
 
 3) Open interface.html to access ODrive webinterface.
 
-
 4) To change the default 127.0.0.1:12342 websocket, use "ODrive.py /dev/yourserial 1.1.2.3:9999"
 
 ##### iPython shell and API: 
 1) Trigger calibration, calibration is required to enable motor control.
 
 <code>odrive.motors[0].set_do_calibration(True)</code>
-
 
 2) Wait for calibration to finish
 
