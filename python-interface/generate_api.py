@@ -18,7 +18,7 @@ class Mapping():
             else:
                 self.scope = "motor"
         else:
-            print("Unknown scope for %s, fix generator code!" % self.name)
+            print("Unknown scope for {}, fix generator code!".format(self.name))
       
 
 lines = open("../MotorControl/low_level.h","r").read().split("\n")
@@ -53,12 +53,12 @@ mappings = []
 for datatype in range(0,len(exposed_datatype)):
     parts = content.split(" * %s [] = {" %  exposed_datatype[datatype])
     pointernames = parts[1].split("};")[0].split("\n")    
-    pointernames = [p.strip().replace("&","") for p in pointernames if p.strip()!=""]
+    pointernames = [p.strip().replace("&","").replace("(int*)","") for p in pointernames if p.strip()!=""]
     for i in range(0,len(pointernames)):
         pointername = pointernames[i].split(",")[0]
         access = pointernames[i].split("//")[1].strip()
         varnr = ("%s"%i).zfill(3)
-        print "%s %s - %s" % (datatype, varnr, pointername)
+        print("%s %s - %s" % (datatype, varnr, pointername))
         mappings.append(Mapping(pointername,datatype,i,access,0,1))
 
 
